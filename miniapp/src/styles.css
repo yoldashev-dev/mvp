@@ -1,0 +1,204 @@
+:root {
+  --bg: var(--tg-theme-bg-color, #F5F1E6);
+  --surface: var(--tg-theme-secondary-bg-color, #FFFFFF);
+  --ink: var(--tg-theme-text-color, #23301F);
+  --hint: var(--tg-theme-hint-color, #8A9184);
+  --line: #E2DBC8;
+
+  --accent-gold: #B9852E;   /* цель / накопление */
+  --accent-green: #2F7D5C;  /* доход / прибыль */
+  --accent-red: #B0503A;    /* расход */
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  padding: 16px 16px 88px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* --- Общие карточки --- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.card-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hint);
+  margin: 0 0 6px;
+}
+
+.big-number {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.sum-unit {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--hint);
+  margin-left: 4px;
+}
+
+/* --- Кнопки ввода дохода/расхода --- */
+.action-row {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 18px;
+}
+
+.action-btn {
+  flex: 1;
+  border: none;
+  border-radius: 14px;
+  padding: 16px 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn.income {
+  background: rgba(47, 125, 92, 0.12);
+  color: var(--accent-green);
+}
+
+.action-btn.expense {
+  background: rgba(176, 80, 58, 0.12);
+  color: var(--accent-red);
+}
+
+.action-btn:active { transform: scale(0.97); }
+
+/* --- Прогресс-бар цели --- */
+.progress-track {
+  height: 10px;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 10px 0 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent-gold);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* --- Нижняя навигация --- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  text-decoration: none;
+  color: var(--hint);
+  font-size: 11px;
+}
+
+.nav-item.active {
+  color: var(--accent-green);
+}
+
+.nav-icon { font-size: 20px; }
+
+/* --- Баннер триала --- */
+.trial-banner {
+  background: var(--accent-gold);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 12px;
+}
+
+/* --- Форма --- */
+.field {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent-green);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn:active { transform: scale(0.98); }
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.list-row:last-child { border-bottom: none; }
+
+.muted { color: var(--hint); font-size: 13px; }
+
+.empty-state {
+  text-align: center;
+  color: var(--hint);
+  padding: 32px 16px;
+  font-size: 14px;
+}
