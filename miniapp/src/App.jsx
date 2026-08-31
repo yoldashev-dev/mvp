@@ -4,7 +4,6 @@ import { initTelegram, getTelegramUser } from "./lib/telegram.js";
 import { api, errorMessage } from "./lib/api.js";
 import { useToast } from "./lib/toast.jsx";
 import BottomNav from "./components/BottomNav.jsx";
-import TrialBanner from "./components/TrialBanner.jsx";
 import Home from "./pages/Home.jsx";
 import Goal from "./pages/Goal.jsx";
 import Reminders from "./pages/Reminders.jsx";
@@ -17,7 +16,6 @@ import More from "./pages/More.jsx";
 export default function App() {
   const showToast = useToast();
   const [user, setUser] = useState(null);
-  const [status, setStatus] = useState(null);
 
   useEffect(() => {
     initTelegram();
@@ -30,8 +28,6 @@ export default function App() {
         first_name: tgUser.first_name,
         username: tgUser.username,
       })
-      .then(() => api.get(`/api/users/${tgUser.id}/status`))
-      .then((res) => setStatus(res.data))
       .catch((err) => showToast(errorMessage(err)));
   }, []);
 
@@ -39,7 +35,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <TrialBanner status={status} />
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Home telegramId={user.id} />} />

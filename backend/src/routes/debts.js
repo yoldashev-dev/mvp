@@ -15,7 +15,9 @@ function balanceOf(debtorId) {
   return rows.reduce((s, r) => s + (r.type === "lent" ? r.amount : -r.amount), 0);
 }
 
-// Добавить человека, которому дали в долг
+// Добавить человека, которому дали в долг.
+// Если человек с таким именем уже есть в активном списке — не создаём
+// дубликат, а просто добавляем новую запись долга к уже существующему.
 router.post(
   "/people",
   ah((req, res) => {
@@ -25,10 +27,22 @@ router.post(
     const user = db.prepare("SELECT telegram_id FROM users WHERE telegram_id = ?").get(telegram_id);
     if (!user) return badRequest(res, "Пользователь ещё не зарегистрирован — откройте приложение заново");
 
-    const result = db
+    const cleanName = name.trim();
+
+    // Ищем без учёта регистра среди уже активных должников этого продавца.
+    // Важно: делаем сравнение в JS, а не через SQL lower() — встроенный
+    // lower() в SQLite корректно работает только с ASCII и не понимает
+    // кириллицу ("Юлдаш" и "юлдаш" не совпали бы через SQL lower()).
+    const activeDebtors = db
+      .prepare("SELECT * FROM debtors WHERE telegram_id = ? AND is_active = 1")
+      .all(telegram_id);
+    const existing = activeDebtors.find(
+      (d) => d.name.toLowerCase() === cleanName.toLowerCase()
+    );
+
+    const debtorId = existing ? existing.id : db
       .prepare("INSERT INTO debtors (telegram_id, name) VALUES (?, ?)")
-      .run(telegram_id, name.trim());
-    const debtorId = result.lastInsertRowid;
+      .run(telegram_id, cleanName).lastInsertRowid;
 
     if (amount && Number(amount) > 0) {
       db.prepare(
@@ -38,8 +52,9 @@ router.post(
 
     res.json({
       id: debtorId,
-      name: name.trim(),
+      name: existing ? existing.name : cleanName,
       balance: balanceOf(debtorId),
+      merged_with_existing: !!existing,
     });
   })
 );
@@ -99,10 +114,22 @@ router.post(
   })
 );
 
-// Убрать человека из списка (например, завёл по ошибке)
+// Убрать человека из списка — только если долг полностью погашен (баланс 0).
+// Если ещё должен — не даём случайно "спрятать" долг крестиком.
 router.delete(
   "/people/:id",
   ah((req, res) => {
+    const debtor = db.prepare("SELECT * FROM debtors WHERE id = ?").get(req.params.id);
+    if (!debtor) return res.status(404).json({ error: "not_found", message: "Не найдено" });
+
+    const balance = balanceOf(req.params.id);
+    if (balance !== 0) {
+      return res.status(400).json({
+        error: "debt_not_settled",
+        message: "Нельзя убрать — долг ещё не выплачен полностью",
+      });
+    }
+
     db.prepare("UPDATE debtors SET is_active = 0 WHERE id = ?").run(req.params.id);
     res.json({ ok: true });
   })
