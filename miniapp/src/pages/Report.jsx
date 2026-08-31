@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { api, fmt } from "../lib/api.js";
+import { api, fmt, errorMessage } from "../lib/api.js";
+import { useToast } from "../lib/toast.jsx";
 
 export default function Report({ telegramId }) {
+  const showToast = useToast();
   const [report, setReport] = useState(null);
 
   useEffect(() => {
     api
       .get("/api/transactions/report/monthly", { params: { telegram_id: telegramId } })
-      .then((r) => setReport(r.data));
+      .then((r) => setReport(r.data))
+      .catch((err) => showToast(errorMessage(err)));
   }, [telegramId]);
 
   if (!report) return null;

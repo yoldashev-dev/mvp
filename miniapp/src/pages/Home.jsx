@@ -1,30 +1,47 @@
 import React, { useEffect, useState } from "react";
-import { api, fmt } from "../lib/api.js";
+import { api, fmt, errorMessage } from "../lib/api.js";
 import { hapticImpact } from "../lib/telegram.js";
+import { useToast } from "../lib/toast.jsx";
 
 export default function Home({ telegramId }) {
+  const showToast = useToast();
   const [snapshot, setSnapshot] = useState(null);
   const [modal, setModal] = useState(null); // 'income' | 'expense' | null
   const [amount, setAmount] = useState("");
   const [recent, setRecent] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const load = () => {
-    api.get("/api/snapshot", { params: { telegram_id: telegramId } }).then((r) => setSnapshot(r.data));
+    api
+      .get("/api/snapshot", { params: { telegram_id: telegramId } })
+      .then((r) => setSnapshot(r.data))
+      .catch((err) => showToast(errorMessage(err)));
     api
       .get("/api/transactions", { params: { telegram_id: telegramId, limit: 5 } })
-      .then((r) => setRecent(r.data));
+      .then((r) => setRecent(r.data))
+      .catch((err) => showToast(errorMessage(err)));
   };
 
   useEffect(load, [telegramId]);
 
   const submit = async () => {
     const value = parseInt(amount.replace(/\D/g, ""), 10);
-    if (!value) return;
-    await api.post("/api/transactions", { telegram_id: telegramId, type: modal, amount: value });
-    hapticImpact("medium");
-    setModal(null);
-    setAmount("");
-    load();
+    if (!value) {
+      showToast("Введите сумму");
+      return;
+    }
+    setSaving(true);
+    try {
+      await api.post("/api/transactions", { telegram_id: telegramId, type: modal, amount: value });
+      hapticImpact("medium");
+      setModal(null);
+      setAmount("");
+      load();
+    } catch (err) {
+      showToast(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -68,7 +85,7 @@ export default function Home({ telegramId }) {
       </div>
 
       {modal && (
-        <div className="modal-overlay" onClick={() => setModal(null)}>
+        <div className="modal-overlay" onClick={() => !saving && setModal(null)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
             <p className="card-title">
               {modal === "income" ? "Сколько заработал сегодня?" : "Сколько потратил сегодня?"}
@@ -80,9 +97,10 @@ export default function Home({ telegramId }) {
               placeholder="Например, 100000"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
             />
-            <button className="primary-btn" onClick={submit}>
-              Сохранить
+            <button className="primary-btn" onClick={submit} disabled={saving}>
+              {saving ? "Сохраняю…" : "Сохранить"}
             </button>
           </div>
         </div>

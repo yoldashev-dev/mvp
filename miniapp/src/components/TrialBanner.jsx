@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function TrialBanner({ status }) {
   if (!status) return null;
@@ -6,20 +7,24 @@ export default function TrialBanner({ status }) {
   if (status.subscription_active) return null; // платный — баннер не нужен
 
   if (status.trial_active) {
-    const daysLeft = Math.max(
-      0,
-      Math.ceil((new Date(status.trial_ends_at) - new Date()) / 86400000)
-    );
     return (
-      <div className="trial-banner">
-        Бесплатный период: осталось {daysLeft} {daysLeft === 1 ? "день" : "дней"}
-      </div>
+      <Link to="/subscription" className="trial-banner" style={{ display: "block" }}>
+        Бесплатный период: осталось {status.trial_days_left} {dayWord(status.trial_days_left)}
+      </Link>
     );
   }
 
   return (
-    <div className="trial-banner" style={{ background: "var(--accent-red)" }}>
-      Бесплатный период закончился · 200 000 сум/мес
-    </div>
+    <Link to="/subscription" className="trial-banner" style={{ display: "block", background: "var(--accent-red)" }}>
+      Бесплатный период закончился · нажмите, чтобы оплатить
+    </Link>
   );
+}
+
+function dayWord(n) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return "дня";
+  return "дней";
 }

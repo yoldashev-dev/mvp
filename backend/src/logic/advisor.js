@@ -2,7 +2,7 @@ import db from "../db/index.js";
 
 /**
  * Считает финансовую картину пользователя и даёт рекомендацию:
- * сколько можно откладывать на цель, не уходя в минус.
+ * сколько можно откладывать на цели, не уходя в минус.
  *
  * Логика (простая, но честная для MVP):
  *  1. Берём чистую прибыль (доход - расход) за последние N дней.
@@ -10,7 +10,7 @@ import db from "../db/index.js";
  *  3. Вычитаем ближайшие обязательные платежи (напоминания: аренда и т.п.)
  *     на ближайшие 30 дней.
  *  4. То, что остаётся после "обязательной подушки", делим:
- *     - 50% можно откладывать на цель
+ *     - 50% можно откладывать на цели
  *     - 50% остаётся как резерв бизнеса (буфер на форс-мажоры)
  *  5. Если после вычета обязательных платежей ничего не остаётся —
  *     рекомендация 0 и предупреждение.
@@ -67,16 +67,47 @@ export function getFinancialSnapshot(telegramId) {
   };
 }
 
-export function getGoalProjection(telegramId, goal) {
+/**
+ * Прогноз по конкретной цели. Если у пользователя несколько активных целей —
+ * рекомендованная сумма делится между ними поровну (activeGoalsCount).
+ */
+export function getGoalProjection(telegramId, goal, activeGoalsCount = 1) {
   const snapshot = getFinancialSnapshot(telegramId);
   const remaining = Math.max(0, goal.target_amount - goal.saved_amount);
+  const share = Math.max(1, activeGoalsCount);
 
-  if (snapshot.recommended_monthly_saving <= 0) {
-    return { ...snapshot, remaining, weeks_to_goal: null };
+  const dailyForThisGoal = Math.floor(snapshot.recommended_daily_saving / share);
+  const monthlyForThisGoal = Math.floor(snapshot.recommended_monthly_saving / share);
+
+  const canBuyNow = remaining <= 0;
+
+  if (canBuyNow) {
+    return { ...snapshot, remaining: 0, can_buy_now: true, days_to_goal: 0, weeks_to_goal: 0 };
   }
 
-  const weeklySaving = snapshot.recommended_monthly_saving / 4.33;
-  const weeksToGoal = Math.ceil(remaining / weeklySaving);
+  if (dailyForThisGoal <= 0) {
+    return {
+      ...snapshot,
+      remaining,
+      can_buy_now: false,
+      days_to_goal: null,
+      weeks_to_goal: null,
+      daily_for_this_goal: 0,
+      monthly_for_this_goal: 0,
+    };
+  }
 
-  return { ...snapshot, remaining, weeks_to_goal: weeksToGoal };
+  const daysToGoal = Math.ceil(remaining / dailyForThisGoal);
+  const weeksToGoal = Math.ceil(daysToGoal / 7);
+
+  return {
+    ...snapshot,
+    remaining,
+    can_buy_now: false,
+    daily_for_this_goal: dailyForThisGoal,
+    monthly_for_this_goal: monthlyForThisGoal,
+    days_to_goal: daysToGoal,
+    // Если накопление меньше 2 недель — удобнее показывать в днях, а не в неделях
+    weeks_to_goal: daysToGoal > 13 ? weeksToGoal : null,
+  };
 }
