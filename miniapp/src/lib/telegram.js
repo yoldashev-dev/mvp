@@ -30,4 +30,12 @@ export function hideMainButton() {
   tg?.MainButton?.hide();
 }
 
+export function openLink(url) {
+  if (tg?.openLink) {
+    tg.openLink(url);
+  } else {
+    window.open(url, "_blank");
+  }
+}
+
 export default tg;

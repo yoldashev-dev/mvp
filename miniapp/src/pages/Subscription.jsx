@@ -74,8 +74,8 @@ export default function Subscription({ telegramId }) {
       </div>
 
       {!status.trial_active && !status.subscription_active && (
-        <div className="card" style={{ borderColor: "var(--accent-red)" }}>
-          <p className="muted" style={{ color: "var(--accent-red)" }}>
+        <div className="card" style={{ borderColor: "var(--accent-alert)" }}>
+          <p className="muted" style={{ color: "var(--accent-alert)" }}>
             Доступ к приложению ограничен — оформите подписку, чтобы продолжить пользоваться ботом.
           </p>
         </div>

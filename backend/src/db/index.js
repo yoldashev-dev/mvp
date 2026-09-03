@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS debtors (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   telegram_id   INTEGER NOT NULL,
   name          TEXT NOT NULL,
+  due_date      TEXT,                 -- дата, до которой обещали вернуть (YYYY-MM-DD)
   is_active     INTEGER DEFAULT 1,
   created_at    TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
@@ -85,5 +86,6 @@ function ensureColumn(table, column, definition) {
   }
 }
 ensureColumn("goals", "status", "TEXT DEFAULT 'active'");
+ensureColumn("debtors", "due_date", "TEXT");
 
 export default db;

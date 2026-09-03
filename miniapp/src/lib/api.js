@@ -3,6 +3,7 @@ import axios from "axios";
 // В проде задайте через переменные окружения Vite (VITE_BACKEND_URL)
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
+export { BACKEND_URL };
 export const api = axios.create({ baseURL: BACKEND_URL, timeout: 15000 });
 
 export function fmt(n) {

@@ -1,13 +1,13 @@
 :root {
-  --bg: var(--tg-theme-bg-color, #F5F1E6);
+  --bg: var(--tg-theme-bg-color, #FAFAFA);
   --surface: var(--tg-theme-secondary-bg-color, #FFFFFF);
-  --ink: var(--tg-theme-text-color, #23301F);
-  --hint: var(--tg-theme-hint-color, #8A9184);
-  --line: #E2DBC8;
+  --ink: var(--tg-theme-text-color, #111111);
+  --hint: var(--tg-theme-hint-color, #8C8C8C);
+  --line: #E5E5E5;
+  --line-strong: #1A1A1A;
 
-  --accent-gold: #B9852E;   /* цель / накопление */
-  --accent-green: #2F7D5C;  /* доход / прибыль */
-  --accent-red: #B0503A;    /* расход */
+  --accent: #3B6EFF;      /* единственный акцент: доход, прогресс, активные состояния */
+  --accent-alert: #DC2626; /* только для проблем: просрочка, ошибки, отрицательная прибыль */
 }
 
 * { box-sizing: border-box; }
@@ -42,7 +42,7 @@ body {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 18px;
   margin-bottom: 14px;
 }
@@ -57,9 +57,10 @@ body {
 
 .big-number {
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: -0.02em;
   margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 .sum-unit {
@@ -78,8 +79,7 @@ body {
 
 .action-btn {
   flex: 1;
-  border: none;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 16px 10px;
   font-size: 15px;
   font-weight: 600;
@@ -91,20 +91,22 @@ body {
 }
 
 .action-btn.income {
-  background: rgba(47, 125, 92, 0.12);
-  color: var(--accent-green);
+  background: var(--ink);
+  color: #fff;
+  border: 1px solid var(--ink);
 }
 
 .action-btn.expense {
-  background: rgba(176, 80, 58, 0.12);
-  color: var(--accent-red);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
 }
 
 .action-btn:active { transform: scale(0.97); }
 
 /* --- Прогресс-бар цели --- */
 .progress-track {
-  height: 10px;
+  height: 8px;
   background: var(--line);
   border-radius: 999px;
   overflow: hidden;
@@ -113,7 +115,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: var(--accent-gold);
+  background: var(--accent);
   border-radius: 999px;
   transition: width 0.4s ease;
 }
@@ -143,30 +145,25 @@ body {
 }
 
 .nav-item.active {
-  color: var(--accent-green);
+  color: var(--accent);
 }
 
 .nav-icon { font-size: 20px; }
-
-/* --- Баннер триала --- */
-.trial-banner {
-  background: var(--accent-gold);
-  color: #fff;
-  font-size: 13px;
-  text-align: center;
-  padding: 8px 12px;
-}
 
 /* --- Форма --- */
 .field {
   width: 100%;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--ink);
   font-size: 16px;
   margin-bottom: 10px;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--line-strong);
 }
 
 .primary-btn {
@@ -174,12 +171,13 @@ body {
   padding: 14px;
   border-radius: 12px;
   border: none;
-  background: var(--accent-green);
+  background: var(--ink);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 }
+.primary-btn:disabled { opacity: 0.5; }
 
 .primary-btn:active { transform: scale(0.98); }
 
@@ -218,8 +216,8 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   animation: toast-in 0.2s ease;
 }
-.toast-error { background: var(--accent-red); }
-.toast-success { background: var(--accent-green); }
+.toast-error { background: var(--accent-alert); }
+.toast-success { background: var(--ink); }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -243,9 +241,9 @@ body {
   font-size: 12px;
   font-weight: 600;
 }
-.pill-green { background: rgba(47,125,92,0.12); color: var(--accent-green); }
-.pill-red { background: rgba(176,80,58,0.12); color: var(--accent-red); }
-.pill-gold { background: rgba(185,133,46,0.12); color: var(--accent-gold); }
+.pill-green { background: rgba(59,110,255,0.1); color: var(--accent); }
+.pill-red { background: rgba(220,38,38,0.1); color: var(--accent-alert); }
+.pill-gold { background: #F0F0F0; color: var(--ink); }
 
 .icon-btn {
   border: none;
@@ -261,7 +259,7 @@ body {
   width: 100%;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--ink);
   font-size: 15px;
@@ -269,6 +267,7 @@ body {
   cursor: pointer;
 }
 .secondary-btn:active { transform: scale(0.98); }
+.secondary-btn:disabled { opacity: 0.5; }
 
 .tab-row {
   display: flex;
@@ -288,8 +287,8 @@ body {
   cursor: pointer;
 }
 .tab-btn.active {
-  background: var(--accent-green);
-  border-color: var(--accent-green);
+  background: var(--ink);
+  border-color: var(--ink);
   color: #fff;
 }
 
@@ -297,11 +296,11 @@ body {
 .calc-display {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   padding: 22px 18px;
   text-align: right;
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 500;
   margin-bottom: 14px;
   overflow-x: auto;
   white-space: nowrap;
@@ -312,7 +311,6 @@ body {
   gap: 8px;
 }
 .calc-key {
-  border: none;
   border-radius: 12px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -322,9 +320,9 @@ body {
   cursor: pointer;
 }
 .calc-key:active { transform: scale(0.96); }
-.calc-key.op { background: rgba(185,133,46,0.12); color: var(--accent-gold); }
-.calc-key.equals { background: var(--accent-green); color: #fff; }
-.calc-key.clear { color: var(--accent-red); }
+.calc-key.op { background: rgba(59,110,255,0.08); color: var(--accent); }
+.calc-key.equals { background: var(--ink); color: #fff; border-color: var(--ink); }
+.calc-key.clear { color: var(--accent-alert); }
 
 /* --- Меню "Ещё" --- */
 .more-row {

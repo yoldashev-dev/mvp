@@ -2,6 +2,9 @@
   "name": "rentbot-bot",
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "node src/index.js",
     "start": "node src/index.js"

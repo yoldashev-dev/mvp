@@ -75,7 +75,7 @@ export default function Reminders({ telegramId }) {
             </span>
             <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {r.amount ? `${fmt(r.amount)} сум` : ""}
-              <button onClick={() => remove(r.id)} className="icon-btn" style={{ color: "var(--accent-red)" }}>
+              <button onClick={() => remove(r.id)} className="icon-btn" style={{ color: "var(--accent-alert)" }}>
                 ✕
               </button>
             </span>

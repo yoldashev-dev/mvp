@@ -9,6 +9,7 @@ export default function Debts({ telegramId }) {
   const [form, setForm] = useState(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -32,10 +33,12 @@ export default function Debts({ telegramId }) {
         telegram_id: telegramId,
         name: name.trim(),
         amount: value || undefined,
+        due_date: dueDate || undefined,
       });
       setForm(false);
       setName("");
       setAmount("");
+      setDueDate("");
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -63,7 +66,7 @@ export default function Debts({ telegramId }) {
     <div>
       <div className="card">
         <p className="card-title">Всего должны вам</p>
-        <p className="big-number" style={{ color: data.total_owed > 0 ? "var(--accent-red)" : undefined }}>
+        <p className="big-number" style={{ color: data.total_owed > 0 ? "var(--accent)" : undefined }}>
           {fmt(data.total_owed)}
           <span className="sum-unit">сум</span>
         </p>
@@ -76,8 +79,11 @@ export default function Debts({ telegramId }) {
         )}
         {data.people.map((p) => (
           <div className="list-row" key={p.id} style={{ cursor: "pointer" }} onClick={() => setOpenPerson(p.id)}>
-            <span>{p.name}</span>
-            <span style={{ color: p.balance > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>
+            <span>
+              {p.name}
+              {p.overdue && <span className="pill pill-red" style={{ marginLeft: 8 }}>просрочено</span>}
+            </span>
+            <span style={{ color: p.balance > 0 ? "var(--accent)" : "var(--ink)" }}>
               {fmt(p.balance)} сум ›
             </span>
           </div>
@@ -104,6 +110,13 @@ export default function Debts({ telegramId }) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+          <p className="muted" style={{ margin: "0 0 6px" }}>Когда обещал вернуть (необязательно)</p>
+          <input
+            className="field"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
           <div style={{ display: "flex", gap: 8 }}>
             <button className="secondary-btn" onClick={() => setForm(false)}>
               Отмена
@@ -122,6 +135,7 @@ function PersonDetail({ telegramId, personId, onBack }) {
   const showToast = useToast();
   const [data, setData] = useState(null); // { debtor, entries, balance }
   const [entryAmount, setEntryAmount] = useState("");
+  const [entryDueDate, setEntryDueDate] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -141,8 +155,13 @@ function PersonDetail({ telegramId, personId, onBack }) {
     }
     setSaving(true);
     try {
-      await api.post(`/api/debts/people/${personId}/entries`, { type, amount: value });
+      await api.post(`/api/debts/people/${personId}/entries`, {
+        type,
+        amount: value,
+        due_date: type === "lent" ? entryDueDate || undefined : undefined,
+      });
       setEntryAmount("");
+      setEntryDueDate("");
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -175,10 +194,16 @@ function PersonDetail({ telegramId, personId, onBack }) {
             ✕
           </button>
         </div>
-        <p className="big-number" style={{ color: data.balance > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>
+        <p className="big-number" style={{ color: data.balance > 0 ? "var(--accent)" : "var(--ink)" }}>
           {fmt(data.balance)}
           <span className="sum-unit">сум {data.balance > 0 ? "должен" : "долга нет"}</span>
         </p>
+        {data.debtor.due_date && data.balance > 0 && (
+          <p className={data.debtor.overdue ? "pill pill-red" : "pill pill-gold"} style={{ marginTop: 8, display: "inline-block" }}>
+            {data.debtor.overdue ? "просрочено с " : "вернуть до "}
+            {data.debtor.due_date}
+          </p>
+        )}
       </div>
 
       <div className="card">
@@ -188,6 +213,15 @@ function PersonDetail({ telegramId, personId, onBack }) {
           placeholder="Сумма, сум"
           value={entryAmount}
           onChange={(e) => setEntryAmount(e.target.value)}
+        />
+        <p className="muted" style={{ margin: "0 0 6px" }}>
+          Если снова даёте в долг — можно указать новую дату возврата
+        </p>
+        <input
+          className="field"
+          type="date"
+          value={entryDueDate}
+          onChange={(e) => setEntryDueDate(e.target.value)}
         />
         <div style={{ display: "flex", gap: 8 }}>
           <button className="secondary-btn" onClick={() => addEntry("repaid")} disabled={saving}>
@@ -205,7 +239,7 @@ function PersonDetail({ telegramId, personId, onBack }) {
         {data.entries.map((e) => (
           <div className="list-row" key={e.id}>
             <span>{e.type === "lent" ? "Дал в долг" : "Вернул"}</span>
-            <span style={{ color: e.type === "lent" ? "var(--accent-red)" : "var(--accent-green)" }}>
+            <span style={{ color: e.type === "lent" ? "var(--ink)" : "var(--accent)" }}>
               {e.type === "lent" ? "+" : "−"}
               {fmt(e.amount)} сум
             </span>

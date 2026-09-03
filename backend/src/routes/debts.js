@@ -15,13 +15,18 @@ function balanceOf(debtorId) {
   return rows.reduce((s, r) => s + (r.type === "lent" ? r.amount : -r.amount), 0);
 }
 
+function isOverdue(dueDate, balance) {
+  if (!dueDate || balance <= 0) return false;
+  return dueDate < new Date().toISOString().slice(0, 10);
+}
+
 // Добавить человека, которому дали в долг.
 // Если человек с таким именем уже есть в активном списке — не создаём
 // дубликат, а просто добавляем новую запись долга к уже существующему.
 router.post(
   "/people",
   ah((req, res) => {
-    const { telegram_id, name, amount, note } = req.body;
+    const { telegram_id, name, amount, note, due_date } = req.body;
     if (!telegram_id || !name) return badRequest(res, "telegram_id и name обязательны");
 
     const user = db.prepare("SELECT telegram_id FROM users WHERE telegram_id = ?").get(telegram_id);
@@ -41,8 +46,13 @@ router.post(
     );
 
     const debtorId = existing ? existing.id : db
-      .prepare("INSERT INTO debtors (telegram_id, name) VALUES (?, ?)")
-      .run(telegram_id, cleanName).lastInsertRowid;
+      .prepare("INSERT INTO debtors (telegram_id, name, due_date) VALUES (?, ?, ?)")
+      .run(telegram_id, cleanName, due_date || null).lastInsertRowid;
+
+    // Если задали новую дату возврата — обновляем её и на уже существующем должнике
+    if (existing && due_date) {
+      db.prepare("UPDATE debtors SET due_date = ? WHERE id = ?").run(due_date, debtorId);
+    }
 
     if (amount && Number(amount) > 0) {
       db.prepare(
@@ -72,11 +82,26 @@ router.get(
 
     const withBalance = people
       .map((p) => ({ ...p, balance: balanceOf(p.id) }))
-      .filter((p) => p.balance !== 0); // кто всё вернул — не засоряет список
+      .filter((p) => p.balance !== 0) // кто всё вернул — не засоряет список
+      .map((p) => ({ ...p, overdue: isOverdue(p.due_date, p.balance) }));
 
     const total = withBalance.reduce((s, p) => s + p.balance, 0);
 
     res.json({ people: withBalance, total_owed: total });
+  })
+);
+
+// Для бота: должники с истёкшим сроком возврата
+router.get(
+  "/overdue",
+  ah((req, res) => {
+    const rows = db
+      .prepare("SELECT * FROM debtors WHERE is_active = 1 AND due_date IS NOT NULL AND due_date < date('now')")
+      .all();
+    const overdue = rows
+      .map((d) => ({ ...d, balance: balanceOf(d.id) }))
+      .filter((d) => d.balance > 0);
+    res.json(overdue);
   })
 );
 
@@ -91,15 +116,17 @@ router.get(
       .prepare("SELECT * FROM debt_entries WHERE debtor_id = ? ORDER BY created_at DESC")
       .all(req.params.id);
 
-    res.json({ debtor, entries, balance: balanceOf(req.params.id) });
+    const balance = balanceOf(req.params.id);
+    res.json({ debtor: { ...debtor, overdue: isOverdue(debtor.due_date, balance) }, entries, balance });
   })
 );
 
-// Добавить запись: снова дал в долг, или вернул часть/всё
+// Добавить запись: снова дал в долг, или вернул часть/всё.
+// При новой выдаче в долг можно заодно обновить дату возврата.
 router.post(
   "/people/:id/entries",
   ah((req, res) => {
-    const { type, amount, note } = req.body;
+    const { type, amount, note, due_date } = req.body;
     if (!["lent", "repaid"].includes(type)) return badRequest(res, "type должен быть lent или repaid");
     if (!amount || Number(amount) <= 0) return badRequest(res, "amount должен быть больше нуля");
 
@@ -110,7 +137,16 @@ router.post(
       "INSERT INTO debt_entries (debtor_id, telegram_id, type, amount, note) VALUES (?, ?, ?, ?, ?)"
     ).run(req.params.id, debtor.telegram_id, type, Math.round(amount), note || null);
 
-    res.json({ balance: balanceOf(req.params.id) });
+    if (type === "lent" && due_date) {
+      db.prepare("UPDATE debtors SET due_date = ? WHERE id = ?").run(due_date, req.params.id);
+    }
+    // Если долг полностью погашен — дата возврата больше не нужна
+    const newBalance = balanceOf(req.params.id);
+    if (newBalance <= 0) {
+      db.prepare("UPDATE debtors SET due_date = NULL WHERE id = ?").run(req.params.id);
+    }
+
+    res.json({ balance: newBalance });
   })
 );
 

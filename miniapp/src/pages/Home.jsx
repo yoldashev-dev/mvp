@@ -3,11 +3,15 @@ import { api, fmt, errorMessage } from "../lib/api.js";
 import { hapticImpact } from "../lib/telegram.js";
 import { useToast } from "../lib/toast.jsx";
 
+const EXPENSE_CATEGORIES = ["Аренда", "Товар", "Зарплата", "Коммуналка", "Другое"];
+const INCOME_CATEGORIES = ["Продажи", "Услуги", "Другое"];
+
 export default function Home({ telegramId }) {
   const showToast = useToast();
   const [snapshot, setSnapshot] = useState(null);
   const [modal, setModal] = useState(null); // 'income' | 'expense' | null
   const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState(null);
   const [recent, setRecent] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -24,6 +28,11 @@ export default function Home({ telegramId }) {
 
   useEffect(load, [telegramId]);
 
+  const openModal = (type) => {
+    setModal(type);
+    setCategory(null);
+  };
+
   const submit = async () => {
     const value = parseInt(amount.replace(/\D/g, ""), 10);
     if (!value) {
@@ -32,10 +41,16 @@ export default function Home({ telegramId }) {
     }
     setSaving(true);
     try {
-      await api.post("/api/transactions", { telegram_id: telegramId, type: modal, amount: value });
+      await api.post("/api/transactions", {
+        telegram_id: telegramId,
+        type: modal,
+        amount: value,
+        category: category || null,
+      });
       hapticImpact("medium");
       setModal(null);
       setAmount("");
+      setCategory(null);
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -43,6 +58,8 @@ export default function Home({ telegramId }) {
       setSaving(false);
     }
   };
+
+  const categories = modal === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   return (
     <div>
@@ -53,18 +70,18 @@ export default function Home({ telegramId }) {
           <span className="sum-unit">сум</span>
         </p>
         {snapshot?.warning && (
-          <p className="muted" style={{ color: "var(--accent-red)", marginTop: 8 }}>
+          <p className="muted" style={{ color: "var(--accent-alert)", marginTop: 8 }}>
             ⚠️ {snapshot.warning}
           </p>
         )}
       </div>
 
       <div className="action-row">
-        <button className="action-btn income" onClick={() => setModal("income")}>
+        <button className="action-btn income" onClick={() => openModal("income")}>
           <span style={{ fontSize: 22 }}>＋</span>
           Заработал
         </button>
-        <button className="action-btn expense" onClick={() => setModal("expense")}>
+        <button className="action-btn expense" onClick={() => openModal("expense")}>
           <span style={{ fontSize: 22 }}>－</span>
           Потратил
         </button>
@@ -75,8 +92,11 @@ export default function Home({ telegramId }) {
         {recent.length === 0 && <p className="empty-state">Пока нет записей — добавь первую выше 👆</p>}
         {recent.map((t) => (
           <div className="list-row" key={t.id}>
-            <span>{t.type === "income" ? "Доход" : "Расход"}</span>
-            <span style={{ color: t.type === "income" ? "var(--accent-green)" : "var(--accent-red)" }}>
+            <span>
+              {t.type === "income" ? "Доход" : "Расход"}
+              {t.category && <span className="muted"> · {t.category}</span>}
+            </span>
+            <span style={{ color: t.type === "income" ? "var(--accent)" : "var(--ink)" }}>
               {t.type === "income" ? "+" : "−"}
               {fmt(t.amount)} сум
             </span>
@@ -99,6 +119,20 @@ export default function Home({ telegramId }) {
               onChange={(e) => setAmount(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
             />
+
+            <p className="muted" style={{ margin: "0 0 8px" }}>Категория (необязательно)</p>
+            <div className="tab-row" style={{ marginBottom: 14 }}>
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  className={"tab-btn" + (category === c ? " active" : "")}
+                  onClick={() => setCategory(category === c ? null : c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
             <button className="primary-btn" onClick={submit} disabled={saving}>
               {saving ? "Сохраняю…" : "Сохранить"}
             </button>
@@ -114,6 +148,7 @@ export default function Home({ telegramId }) {
         .modal-sheet {
           background: var(--surface); width: 100%; border-radius: 20px 20px 0 0;
           padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+          max-height: 85vh; overflow-y: auto;
         }
       `}</style>
     </div>
