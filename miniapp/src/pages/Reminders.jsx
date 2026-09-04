@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
+import { CloseIcon } from "../components/Icon.jsx";
 
 export default function Reminders({ telegramId }) {
   const showToast = useToast();
@@ -76,7 +77,7 @@ export default function Reminders({ telegramId }) {
             <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {r.amount ? `${fmt(r.amount)} сум` : ""}
               <button onClick={() => remove(r.id)} className="icon-btn" style={{ color: "var(--accent-alert)" }}>
-                ✕
+                <CloseIcon width={16} height={16} />
               </button>
             </span>
           </div>

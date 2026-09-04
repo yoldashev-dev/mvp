@@ -1,8 +1,13 @@
+/* Палитра зафиксирована и НЕ зависит от системной темы Telegram
+   (--tg-theme-*). Раньше эти переменные подставлялись из темы пользователя
+   и в тёмной теме давали белую кнопку "Заработал" на белом фоне — цвета
+   ломались. Для финансового приложения предсказуемый вид важнее, чем
+   слияние с темой — поэтому палитра всегда одна и та же. */
 :root {
-  --bg: var(--tg-theme-bg-color, #FAFAFA);
-  --surface: var(--tg-theme-secondary-bg-color, #FFFFFF);
-  --ink: var(--tg-theme-text-color, #111111);
-  --hint: var(--tg-theme-hint-color, #8C8C8C);
+  --bg: #FAFAFA;
+  --surface: #FFFFFF;
+  --ink: #111111;
+  --hint: #8C8C8C;
   --line: #E5E5E5;
   --line-strong: #1A1A1A;
 
@@ -148,7 +153,7 @@ body {
   color: var(--accent);
 }
 
-.nav-icon { font-size: 20px; }
+.nav-icon { display: block; }
 
 /* --- Форма --- */
 .field {
@@ -344,5 +349,5 @@ body {
   font-size: 15px;
   font-weight: 500;
 }
-.more-row-icon { font-size: 20px; }
+.more-row-icon { flex-shrink: 0; color: var(--ink); }
 .more-row-chevron { color: var(--hint); }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
+import { CloseIcon, ChevronRightIcon } from "../components/Icon.jsx";
 
 export default function Debts({ telegramId }) {
   const showToast = useToast();
@@ -83,8 +84,9 @@ export default function Debts({ telegramId }) {
               {p.name}
               {p.overdue && <span className="pill pill-red" style={{ marginLeft: 8 }}>просрочено</span>}
             </span>
-            <span style={{ color: p.balance > 0 ? "var(--accent)" : "var(--ink)" }}>
-              {fmt(p.balance)} сум ›
+            <span style={{ color: p.balance > 0 ? "var(--accent)" : "var(--ink)", display: "flex", alignItems: "center", gap: 2 }}>
+              {fmt(p.balance)} сум
+              <ChevronRightIcon width={16} height={16} style={{ color: "var(--hint)" }} />
             </span>
           </div>
         ))}
@@ -183,15 +185,16 @@ function PersonDetail({ telegramId, personId, onBack }) {
 
   return (
     <div>
-      <button className="icon-btn" style={{ padding: "0 0 10px", fontSize: 14 }} onClick={onBack}>
-        ‹ Назад
+      <button className="icon-btn" style={{ padding: "0 0 10px", fontSize: 14, display: "flex", alignItems: "center", gap: 2 }} onClick={onBack}>
+        <ChevronRightIcon width={16} height={16} style={{ transform: "rotate(180deg)" }} />
+        Назад
       </button>
 
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <p className="card-title" style={{ margin: 0 }}>{data.debtor.name}</p>
           <button className="icon-btn" onClick={removePerson} title="Убрать из списка">
-            ✕
+            <CloseIcon width={16} height={16} />
           </button>
         </div>
         <p className="big-number" style={{ color: data.balance > 0 ? "var(--accent)" : "var(--ink)" }}>

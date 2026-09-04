@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { hapticImpact } from "../lib/telegram.js";
 import { useToast } from "../lib/toast.jsx";
+import { AlertIcon, PlusIcon, MinusIcon } from "../components/Icon.jsx";
 
 const EXPENSE_CATEGORIES = ["Аренда", "Товар", "Зарплата", "Коммуналка", "Другое"];
 const INCOME_CATEGORIES = ["Продажи", "Услуги", "Другое"];
@@ -70,26 +71,27 @@ export default function Home({ telegramId }) {
           <span className="sum-unit">сум</span>
         </p>
         {snapshot?.warning && (
-          <p className="muted" style={{ color: "var(--accent-alert)", marginTop: 8 }}>
-            ⚠️ {snapshot.warning}
+          <p className="muted" style={{ color: "var(--accent-alert)", marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <AlertIcon width={16} height={16} />
+            {snapshot.warning}
           </p>
         )}
       </div>
 
       <div className="action-row">
         <button className="action-btn income" onClick={() => openModal("income")}>
-          <span style={{ fontSize: 22 }}>＋</span>
+          <PlusIcon width={20} height={20} />
           Заработал
         </button>
         <button className="action-btn expense" onClick={() => openModal("expense")}>
-          <span style={{ fontSize: 22 }}>－</span>
+          <MinusIcon width={20} height={20} />
           Потратил
         </button>
       </div>
 
       <div className="card">
         <p className="card-title">Последние записи</p>
-        {recent.length === 0 && <p className="empty-state">Пока нет записей — добавь первую выше 👆</p>}
+        {recent.length === 0 && <p className="empty-state">Пока нет записей — добавь первую выше</p>}
         {recent.map((t) => (
           <div className="list-row" key={t.id}>
             <span>

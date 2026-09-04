@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import { hapticImpact } from "../lib/telegram.js";
+import { CloseIcon, CheckIcon } from "../components/Icon.jsx";
 
 export default function Goal({ telegramId }) {
   const showToast = useToast();
@@ -55,7 +56,7 @@ export default function Goal({ telegramId }) {
     try {
       await api.post(`/api/goals/${id}/purchase`);
       hapticImpact("heavy");
-      showToast("Поздравляем с покупкой! 🎉", "success");
+      showToast("Поздравляем с покупкой!", "success");
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -90,7 +91,7 @@ export default function Goal({ telegramId }) {
                 disabled={busyId === goal.id}
                 title="Отменить цель"
               >
-                ✕
+                <CloseIcon width={16} height={16} />
               </button>
             </div>
             <p className="big-number">
@@ -105,7 +106,10 @@ export default function Goal({ telegramId }) {
             {projection.can_buy_now ? (
               <>
                 <p style={{ margin: "10px 0" }}>
-                  <span className="pill pill-green">Хватает денег!</span>
+                  <span className="pill pill-green" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <CheckIcon width={13} height={13} />
+                    Хватает денег!
+                  </span>
                 </p>
                 <button
                   className="primary-btn"
