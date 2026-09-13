@@ -2,6 +2,14 @@ import { Telegraf, Markup } from "telegraf";
 import axios from "axios";
 import cron from "node-cron";
 import "dotenv/config";
+import {
+  t,
+  formatMoney,
+  parseAmount,
+  DEFAULT_LANG,
+  DEFAULT_CURR,
+  DEFAULT_THEME,
+} from "./i18n.js";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 
@@ -19,93 +27,300 @@ const MINIAPP_URL = rawMiniappUrl;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // нужен для голосового ввода (бесплатный тариф)
 
-
-
 if (!BOT_TOKEN) {
   console.error("BOT_TOKEN не задан. Возьмите токен у @BotFather и укажите в .env");
   process.exit(1);
 }
 
 const bot = new Telegraf(BOT_TOKEN);
-const api = axios.create({ baseURL: BACKEND_URL });
+const api = axios.create({ baseURL: BACKEND_URL, timeout: 15000 });
+
+// ---- Kesh: foydalanuvchi sozlamalari -------------------------------------
+const userCache = new Map();
+
+async function getUserSettings(telegramId) {
+  if (userCache.has(telegramId)) {
+    return userCache.get(telegramId);
+  }
+  try {
+    const { data } = await api.get(`/api/users/${telegramId}/settings`);
+    const settings = {
+      language: data.language || DEFAULT_LANG,
+      currency: data.currency || DEFAULT_CURR,
+      theme: data.theme || DEFAULT_THEME,
+    };
+    userCache.set(telegramId, settings);
+    return settings;
+  } catch {
+    const fallback = {
+      language: DEFAULT_LANG,
+      currency: DEFAULT_CURR,
+      theme: DEFAULT_THEME,
+    };
+    userCache.set(telegramId, fallback);
+    return fallback;
+  }
+}
+
+async function updateUserSettings(telegramId, newSettings) {
+  const current = await getUserSettings(telegramId);
+  const updated = { ...current, ...newSettings };
+  userCache.set(telegramId, updated);
+  try {
+    await api.patch(`/api/users/${telegramId}/settings`, newSettings);
+  } catch (err) {
+    console.error("Sozlamalarni serverda yangilashda xatolik:", err.message);
+  }
+  return updated;
+}
+
+// ---- Klaviaturalar (Keyboards) ------------------------------------------
+function getSettingsKeyboard(lang) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback(t(lang, "btn_change_lang"), "menu:lang")],
+    [Markup.button.callback(t(lang, "btn_change_curr"), "menu:curr")],
+    [Markup.button.callback(t(lang, "btn_change_theme"), "menu:theme")],
+    [Markup.button.callback(t(lang, "btn_close"), "menu:close")],
+  ]);
+}
+
+function getSettingsMessage(settings) {
+  const { language, currency, theme } = settings;
+  const langText = t(language, language === "uz" ? "lang_uz" : "lang_ru");
+  const currText = t(language, currency === "rub" ? "curr_rub" : "curr_uzs");
+  const themeText = t(language, theme === "dark" ? "theme_dark" : "theme_light");
+
+  return (
+    `${t(language, "settings_title")}\n\n` +
+    `• ${t(language, "settings_lang_label")}: <b>${langText}</b>\n` +
+    `• ${t(language, "settings_curr_label")}: <b>${currText}</b>\n` +
+    `• ${t(language, "settings_theme_label")}: <b>${themeText}</b>`
+  );
+}
 
 // ---- /start -------------------------------------------------------------
 bot.start(async (ctx) => {
   const { id: telegram_id, first_name, username } = ctx.from;
 
-  await api.post("/api/users/register", { telegram_id, first_name, username });
+  try {
+    await api.post("/api/users/register", { telegram_id, first_name, username });
+  } catch (err) {
+    console.error("Ro'yxatdan o'tishda xatolik:", err.message);
+  }
 
-  await ctx.reply(
-    `Привет, ${first_name}! 👋\n\n` +
-      `Я помогу вести учёт дохода и расходов твоего бизнеса, буду напоминать про аренду и другие платежи, ` +
-      `и подскажу, когда можно накопить на новую покупку для дела — без риска уйти в минус.\n\n` +
-      `Первые 7 дней — бесплатно. Дальше 200 000 сум/мес.\n\n` +
-      `Открой приложение, чтобы начать:`,
+  const settings = await getUserSettings(telegram_id);
+  const lang = settings.language;
+
+  await ctx.replyWithHTML(
+    t(lang, "welcome", first_name),
     Markup.inlineKeyboard([
-      Markup.button.webApp("📊 Открыть приложение", MINIAPP_URL),
+      [Markup.button.webApp(t(lang, "open_app"), MINIAPP_URL)],
+      [Markup.button.callback(t(lang, "btn_change_lang"), "menu:lang")],
     ])
   );
 });
 
-// ---- Быстрый ввод через команды (запасной вариант без Mini App) --------
-bot.command("доход", async (ctx) => {
+// ---- /settings, /sozlamalar, /настройки ---------------------------------
+async function showSettings(ctx) {
+  const settings = await getUserSettings(ctx.from.id);
+  await ctx.replyWithHTML(
+    getSettingsMessage(settings),
+    getSettingsKeyboard(settings.language)
+  );
+}
+
+bot.command("settings", showSettings);
+bot.command("sozlamalar", showSettings);
+bot.command("настройки", showSettings);
+
+// ---- Callback Actions for Settings --------------------------------------
+bot.action("menu:settings", async (ctx) => {
+  await ctx.answerCbQuery();
+  const settings = await getUserSettings(ctx.from.id);
+  try {
+    await ctx.editMessageText(getSettingsMessage(settings), {
+      parse_mode: "HTML",
+      ...getSettingsKeyboard(settings.language),
+    });
+  } catch (e) {
+    // xabar o'zgarmagan bo'lsa xatoni e'tiborsiz qoldiramiz
+  }
+});
+
+bot.action("menu:lang", async (ctx) => {
+  await ctx.answerCbQuery();
+  const settings = await getUserSettings(ctx.from.id);
+  const lang = settings.language;
+
+  await ctx.editMessageText(t(lang, "choose_lang"), {
+    parse_mode: "HTML",
+    ...Markup.inlineKeyboard([
+      [
+        Markup.button.callback("🇷🇺 Русский" + (lang === "ru" ? " ✓" : ""), "set_lang:ru"),
+        Markup.button.callback("🇺🇿 O'zbekcha" + (lang === "uz" ? " ✓" : ""), "set_lang:uz"),
+      ],
+      [Markup.button.callback(t(lang, "btn_back"), "menu:settings")],
+    ]),
+  });
+});
+
+bot.action(/^set_lang:(ru|uz)$/, async (ctx) => {
+  const newLang = ctx.match[1];
+  await ctx.answerCbQuery();
+  const updated = await updateUserSettings(ctx.from.id, { language: newLang });
+
+  await ctx.replyWithHTML(t(newLang, "lang_changed"));
+  await ctx.editMessageText(getSettingsMessage(updated), {
+    parse_mode: "HTML",
+    ...getSettingsKeyboard(newLang),
+  });
+});
+
+bot.action("menu:curr", async (ctx) => {
+  await ctx.answerCbQuery();
+  const settings = await getUserSettings(ctx.from.id);
+  const { language, currency } = settings;
+
+  await ctx.editMessageText(t(language, "choose_curr"), {
+    parse_mode: "HTML",
+    ...Markup.inlineKeyboard([
+      [
+        Markup.button.callback("🇺🇿 So'm (UZS)" + (currency === "uzs" ? " ✓" : ""), "set_curr:uzs"),
+        Markup.button.callback("🇷🇺 Rubl (₽)" + (currency === "rub" ? " ✓" : ""), "set_curr:rub"),
+      ],
+      [Markup.button.callback(t(language, "btn_back"), "menu:settings")],
+    ]),
+  });
+});
+
+bot.action(/^set_curr:(uzs|rub)$/, async (ctx) => {
+  const newCurr = ctx.match[1];
+  await ctx.answerCbQuery();
+  const updated = await updateUserSettings(ctx.from.id, { currency: newCurr });
+
+  await ctx.replyWithHTML(t(updated.language, "curr_changed", newCurr));
+  await ctx.editMessageText(getSettingsMessage(updated), {
+    parse_mode: "HTML",
+    ...getSettingsKeyboard(updated.language),
+  });
+});
+
+bot.action("menu:theme", async (ctx) => {
+  await ctx.answerCbQuery();
+  const settings = await getUserSettings(ctx.from.id);
+  const { language, theme } = settings;
+
+  await ctx.editMessageText(t(language, "choose_theme"), {
+    parse_mode: "HTML",
+    ...Markup.inlineKeyboard([
+      [
+        Markup.button.callback(t(language, "theme_light") + (theme === "light" ? " ✓" : ""), "set_theme:light"),
+        Markup.button.callback(t(language, "theme_dark") + (theme === "dark" ? " ✓" : ""), "set_theme:dark"),
+      ],
+      [Markup.button.callback(t(language, "btn_back"), "menu:settings")],
+    ]),
+  });
+});
+
+bot.action(/^set_theme:(light|dark)$/, async (ctx) => {
+  const newTheme = ctx.match[1];
+  await ctx.answerCbQuery();
+  const updated = await updateUserSettings(ctx.from.id, { theme: newTheme });
+
+  await ctx.replyWithHTML(t(updated.language, "theme_changed", newTheme));
+  await ctx.editMessageText(getSettingsMessage(updated), {
+    parse_mode: "HTML",
+    ...getSettingsKeyboard(updated.language),
+  });
+});
+
+bot.action("menu:close", async (ctx) => {
+  await ctx.answerCbQuery();
+  try {
+    await ctx.deleteMessage();
+  } catch {}
+});
+
+// ---- Daromad / Доход ----------------------------------------------------
+async function handleIncome(ctx) {
+  const settings = await getUserSettings(ctx.from.id);
   const amount = parseAmount(ctx.message.text);
-  if (!amount) return ctx.reply("Формат: /доход 100000");
+  if (!amount) {
+    return ctx.replyWithHTML(t(settings.language, "income_format_err"));
+  }
   await api.post("/api/transactions", {
     telegram_id: ctx.from.id,
     type: "income",
     amount,
   });
-  ctx.reply(`✅ Записал доход: ${format(amount)} сум`);
-});
+  const moneyStr = formatMoney(amount, settings.currency, settings.language);
+  ctx.replyWithHTML(t(settings.language, "income_recorded", moneyStr));
+}
 
-bot.command("расход", async (ctx) => {
+bot.command("доход", handleIncome);
+bot.command("daromad", handleIncome);
+
+// ---- Xarajat / Расход ---------------------------------------------------
+async function handleExpense(ctx) {
+  const settings = await getUserSettings(ctx.from.id);
   const amount = parseAmount(ctx.message.text);
-  if (!amount) return ctx.reply("Формат: /расход 70000");
+  if (!amount) {
+    return ctx.replyWithHTML(t(settings.language, "expense_format_err"));
+  }
   await api.post("/api/transactions", {
     telegram_id: ctx.from.id,
     type: "expense",
     amount,
   });
-  ctx.reply(`✅ Записал расход: ${format(amount)} сум`);
-});
+  const moneyStr = formatMoney(amount, settings.currency, settings.language);
+  ctx.replyWithHTML(t(settings.language, "expense_recorded", moneyStr));
+}
 
-bot.command("отчет", async (ctx) => {
+bot.command("расход", handleExpense);
+bot.command("xarajat", handleExpense);
+
+// ---- Hisobot / Отчет ----------------------------------------------------
+async function handleReport(ctx) {
+  const settings = await getUserSettings(ctx.from.id);
   const { data } = await api.get("/api/transactions/report/monthly", {
     params: { telegram_id: ctx.from.id },
   });
-  ctx.reply(
-    `📅 За этот месяц:\n` +
-      `Заработали: ${format(data.income)} сум\n` +
-      `Потратили: ${format(data.expense)} сум\n` +
-      `Прибыль: ${format(data.profit)} сум`
+  const incomeStr = formatMoney(data.income, settings.currency, settings.language);
+  const expenseStr = formatMoney(data.expense, settings.currency, settings.language);
+  const profitStr = formatMoney(data.profit, settings.currency, settings.language);
+
+  ctx.replyWithHTML(t(settings.language, "report_title", incomeStr, expenseStr, profitStr));
+}
+
+bot.command("отчет", handleReport);
+bot.command("hisobot", handleReport);
+
+// ---- App tugmasi --------------------------------------------------------
+bot.command("app", async (ctx) => {
+  const settings = await getUserSettings(ctx.from.id);
+  ctx.replyWithHTML(
+    t(settings.language, "open_app"),
+    Markup.inlineKeyboard([Markup.button.webApp(t(settings.language, "open_app_short"), MINIAPP_URL)])
   );
 });
 
-bot.command("app", (ctx) => {
-  ctx.reply(
-    "Открыть приложение:",
-    Markup.inlineKeyboard([Markup.button.webApp("📊 Открыть", MINIAPP_URL)])
-  );
-});
-
-// ---- Голосовой ввод: "заработал сто тысяч" / "потратил 50000" ----------
-// Требует GEMINI_API_KEY в .env (бесплатный ключ на aistudio.google.com) —
-// без него бот вежливо попросит написать текстом.
-// Gemini умеет принимать аудио напрямую и сразу возвращать текст —
-// отдельный шаг "аудио → текст → анализ" не нужен, как было бы с Whisper.
+// ---- Ovozli xabarlar (Voice) --------------------------------------------
 bot.on("voice", async (ctx) => {
+  const settings = await getUserSettings(ctx.from.id);
+  const lang = settings.language;
+
   if (!GEMINI_API_KEY) {
-    return ctx.reply(
-      "Пока не могу распознавать голос — эта функция ещё не настроена. " +
-        "Напишите сумму текстом: /доход 100000 или /расход 50000"
-    );
+    return ctx.replyWithHTML(t(lang, "voice_not_configured"));
   }
 
   try {
     const fileLink = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
     const audioResp = await axios.get(fileLink.href, { responseType: "arraybuffer" });
     const base64Audio = Buffer.from(audioResp.data).toString("base64");
+
+    const promptText =
+      "Bu tadbirkor/sotuvchining bugungi daromad yoki xarajati haqidagi ovozli xabari (ruscha yoki o'zbekcha bo'lishi mumkin). " +
+      "Uning aytgan gapini o'sha tilda so'zma-so'z matnga o'gir. Faqat matnning o'zini javob qilib qaytar, hech qanday qo'shimcha izoh va qo'shtirnoqsiz.";
 
     const geminiResp = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -114,12 +329,7 @@ bot.on("voice", async (ctx) => {
           {
             parts: [
               { inline_data: { mime_type: "audio/ogg", data: base64Audio } },
-              {
-                text:
-                  "Это голосовое сообщение продавца на рынке о сегодняшнем доходе или расходе. " +
-                  "Расшифруй его дословно на русском языке. Ответь ТОЛЬКО текстом расшифровки, " +
-                  "без пояснений и кавычек.",
-              },
+              { text: promptText },
             ],
           },
         ],
@@ -131,120 +341,87 @@ bot.on("voice", async (ctx) => {
     ).trim();
 
     if (!text) {
-      return ctx.reply("Не расслышал голосовое сообщение. Попробуйте ещё раз.");
+      return ctx.replyWithHTML(t(lang, "voice_not_heard"));
     }
 
-    const amount = parseAmount(text.toLowerCase());
+    const amount = parseAmount(text);
     if (!amount) {
-      return ctx.reply(`Расслышал: «${text}» — но не нашёл сумму. Попробуйте ещё раз.`);
+      return ctx.replyWithHTML(t(lang, "voice_no_amount", text));
     }
 
     const lower = text.toLowerCase();
-    const isExpense = /потрат|расход|купил|заплатил/.test(lower);
-    const isIncome = /заработ|доход|продал|получил/.test(lower);
+    const isExpense = /потрат|расход|купил|заплатил|sarfladim|xarajat|ishlatdim|berdim|sotib oldim/.test(lower);
+    const isIncome = /заработ|доход|продал|получил|ishladim|daromad|sotdim|tushdi|foyda/.test(lower);
     const type = isExpense && !isIncome ? "expense" : "income";
 
     await api.post("/api/transactions", { telegram_id: ctx.from.id, type, amount });
 
-    ctx.reply(
-      `Расслышал: «${text}»\n` +
-        `✅ Записал ${type === "income" ? "доход" : "расход"}: ${format(amount)} сум`
-    );
+    const moneyStr = formatMoney(amount, settings.currency, lang);
+    ctx.replyWithHTML(t(lang, "voice_recognized", text, type, moneyStr));
   } catch (err) {
-    console.error("Ошибка распознавания голоса:", err.response?.data || err.message);
-    ctx.reply("Не получилось распознать голос. Попробуйте написать текстом.");
+    console.error("Ovozni aniqlashda xatolik:", err.response?.data || err.message);
+    ctx.replyWithHTML(t(lang, "voice_error"));
   }
 });
 
-function parseAmount(text) {
-  // Сначала пробуем цифры (100000, 100 000, 100к)
-  const digitMatch = text.replace(/\s+/g, "").match(/(\d+)\s*(к|k|тыс)?/i);
-  if (digitMatch) {
-    const num = parseInt(digitMatch[1], 10);
-    return digitMatch[2] ? num * 1000 : num;
-  }
-
-  // Затем — простые числа словами (десять тысяч, сто тысяч, миллион и т.п.)
-  const words = {
-    один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5,
-    шесть: 6, семь: 7, восемь: 8, девять: 9,
-    десять: 10, двадцать: 20, тридцать: 30, сорок: 40, пятьдесят: 50,
-    шестьдесят: 60, семьдесят: 70, восемьдесят: 80, девяносто: 90,
-    сто: 100, двести: 200, триста: 300, четыреста: 400, пятьсот: 500,
-    шестьсот: 600, семьсот: 700, восемьсот: 800, девятьсот: 900,
-  };
-  const multipliers = { тысяча: 1000, тысячи: 1000, тысяч: 1000, миллион: 1000000, млн: 1000000 };
-
-  const tokens = text.split(/\s+/);
-  let total = 0;
-  let current = 0;
-  for (const t of tokens) {
-    if (words[t] !== undefined) {
-      current += words[t];
-    } else if (multipliers[t] !== undefined) {
-      total += (current || 1) * multipliers[t];
-      current = 0;
-    }
-  }
-  total += current;
-  return total > 0 ? total : null;
-}
-
-function format(n) {
-  return n.toLocaleString("ru-RU");
-}
-
-// ---- Ежедневная проверка напоминаний (аренда и т.п.) --------------------
-// Запускается каждый день в 09:00 по серверному времени.
+// ---- Eslatmalar (Cron) --------------------------------------------------
+// 09:00 — Bugungi to'lovlar (ijara va h.k.)
 cron.schedule("0 9 * * *", async () => {
   try {
     const { data: due } = await api.get("/api/reminders/due-today");
     for (const reminder of due) {
-      const amountText = reminder.amount ? ` (~${format(reminder.amount)} сум)` : "";
+      const settings = await getUserSettings(reminder.telegram_id);
+      const amountText = reminder.amount
+        ? ` (~${formatMoney(reminder.amount, settings.currency, settings.language)})`
+        : "";
       await bot.telegram.sendMessage(
         reminder.telegram_id,
-        `⏰ Напоминание: сегодня "${reminder.title}"${amountText}. Не забудь внести доход/расход за вчера, если ещё не сделал.`
+        t(settings.language, "reminder_text", reminder.title, amountText),
+        { parse_mode: "HTML" }
       );
     }
   } catch (err) {
-    console.error("Ошибка при рассылке напоминаний:", err.message);
+    console.error("Eslatmalarni tarqatishda xatolik:", err.message);
   }
 });
 
-// ---- Просроченные долги — проверка раз в день в 10:00 -------------------
+// 10:00 — Qaytishi kechikkan qarzlar
 cron.schedule("0 10 * * *", async () => {
   try {
     const { data: overdue } = await api.get("/api/debts/overdue");
     for (const debtor of overdue) {
+      const settings = await getUserSettings(debtor.telegram_id);
+      const balanceStr = formatMoney(debtor.balance, settings.currency, settings.language);
       await bot.telegram.sendMessage(
         debtor.telegram_id,
-        `📌 ${debtor.name} должен был вернуть долг до ${debtor.due_date}, но пока не вернул. ` +
-          `Сумма: ${format(debtor.balance)} сум.`
+        t(settings.language, "debt_overdue_text", debtor.name, debtor.due_date, balanceStr),
+        { parse_mode: "HTML" }
       );
     }
   } catch (err) {
-    console.error("Ошибка при проверке просроченных долгов:", err.message);
+    console.error("Qarzlarni tekshirishda xatolik:", err.message);
   }
 });
 
-// ---- "Ты забыл внести доход/расход сегодня" — проверка в 20:00 ----------
+// 20:00 — Bugungi yozuv kiritish eslatmasi
 cron.schedule("0 20 * * *", async () => {
   try {
     const { data: telegramIds } = await api.get("/api/transactions/no-entry-today");
     for (const telegramId of telegramIds) {
+      const settings = await getUserSettings(telegramId);
       await bot.telegram.sendMessage(
         telegramId,
-        "🌙 Похоже, сегодня ты ещё не внёс ни одной записи о доходе или расходе. " +
-          "Не забудь — это займёт всего пару секунд."
+        t(settings.language, "night_reminder"),
+        { parse_mode: "HTML" }
       );
     }
   } catch (err) {
-    console.error("Ошибка при проверке пропущенных записей:", err.message);
+    console.error("O'tkazib yuborilgan yozuvlarni tekshirishda xatolik:", err.message);
   }
 });
 
 bot.launch();
-console.log("Бот запущен");
+console.log("RentBot bot muvaffaqiyatli ishga tushdi");
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));

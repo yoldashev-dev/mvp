@@ -15,7 +15,10 @@ CREATE TABLE IF NOT EXISTS users (
   username          TEXT,
   created_at        TEXT DEFAULT (datetime('now')),
   trial_ends_at     TEXT,          -- ISO date, 7 days from created_at
-  subscribed_until  TEXT           -- ISO date, null if not paid
+  subscribed_until  TEXT,          -- ISO date, null if not paid
+  language          TEXT DEFAULT 'ru', -- ru | uz
+  currency          TEXT DEFAULT 'uzs', -- uzs | rub
+  theme             TEXT DEFAULT 'light' -- light | dark
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -87,5 +90,8 @@ function ensureColumn(table, column, definition) {
 }
 ensureColumn("goals", "status", "TEXT DEFAULT 'active'");
 ensureColumn("debtors", "due_date", "TEXT");
+ensureColumn("users", "language", "TEXT DEFAULT 'ru'");
+ensureColumn("users", "currency", "TEXT DEFAULT 'uzs'");
+ensureColumn("users", "theme", "TEXT DEFAULT 'light'");
 
 export default db;

@@ -1,200 +1,230 @@
-# RentBot MVP — бот-ассистент для малого бизнеса
+# RentBot MVP — Kichik biznes va savdo uchun moliya yordamchisi
 
-Telegram Mini App + бот, который:
-- считает доход/расход одним тапом
-- напоминает про аренду и другие регулярные платежи
-- копит на "хотелку" (новое оборудование, холодильник и т.п.), не давая бизнесу уйти в минус
-- показывает отчёт за месяц простыми словами
-- 7 дней бесплатно, дальше 200 000 сум/мес (оплата — заглушка, см. ниже)
+Telegram Mini App + Telegram Bot:
+- Birgina bosish orqali daromad va xarajatlarni qayd etadi (matn yoki ovozli xabar orqali);
+- Ijara, oylik va boshqa muntazam to'lovlarni o'z vaqtida eslatadi;
+- Biznesni zararga kiritmagan holda yangi maqsadlar (masalan, yangi muzlatgich, do'kon jihozi) uchun reja asosida pul jamg'arishni hisoblaydi;
+- Oylik moliyaviy hisobotlarni oddiy va tushunarli tilda ko'rsatadi (PDF va Excel eksporti bilan);
+- **Yangi sozlamalar:** O'zbekcha va Ruscha interfeys, So'm va Rubl valyutalari, Yorug' va Qorong'i mavzu;
+- Boshida 7 kun bepul sinov muddati (trial), so'ngra 200 000 so'm/oy.
 
-## Структура проекта
+---
 
-```
+## Loyiha tuzilishi
+
+```text
 rentbot-mvp/
-├── backend/    Express + SQLite API (считает всю финансовую логику)
-├── bot/        Telegram-бот на Telegraf (команды, напоминания по расписанию)
-└── miniapp/    React Mini App — интерфейс внутри Telegram
+├── backend/    Express + SQLite API (barcha moliyaviy mantiq, hisob-kitoblar va ma'lumotlar bazasi)
+├── bot/        Telegraf asosidagi Telegram-bot (buyruqlar, sozlamalar, jadvalli eslatmalar, ovozli xabarlar)
+└── miniapp/    React (Vite) Mini App — Telegram ichidagi zamonaviy vizual interfeys
 ```
 
-## Как запустить локально — пошагово
+---
 
-### Шаг 0. Получить токен бота у BotFather
+## Botdagi yangi sozlamalar (Settings)
 
-1. Откройте Telegram, найдите @BotFather
-2. Отправьте `/newbot` (если бот ещё не создан) или `/mybots` → выберите бота → `API Token` (если уже создан)
-3. Скопируйте токен — выглядит как `123456789:AAH...` (около 45 символов)
+Botga qulay interaktiv sozlamalar tizimi qo'shildi. Sozlamalar menyusini ochish uchun quyidagi buyruqlardan birini yuborish kifoya:
+- `/settings` yoki `/sozlamalar` (ruscha: `/настройки`)
 
-⚠️ **Токен — это как пароль от бота.** Никогда не:
-- не публикуйте его в чатах, скриншотах, публичных репозиториях на GitHub
-- не пишите его прямо в коде — только в файле `.env` (он не попадает в git благодаря `.gitignore`)
+Menyu orqali quyidagilarni o'zgartirish mumkin:
+1. **🌐 Til tanlash (Til / Язык):**
+   - 🇷🇺 Русский
+   - 🇺🇿 O'zbekcha
+2. **💵 Asosiy hisob valyutasi (Valyuta):**
+   - 🇺🇿 So'm (UZS)
+   - 🇷🇺 Rubl (₽)
+3. **🎨 Ilova ko'rinishi (Mavzu / Тема):**
+   - ☀️ Yorug' (Светлая)
+   - 🌙 Qorong'i (Тёмная)
 
-Если токен всё же где-то засветился — сразу зайдите в @BotFather → `/mybots` →
-ваш бот → `Bot Settings` → `Revoke current token` и получите новый.
+### Tezkor buyruqlar:
+- `/start` — Botni ishga tushirish va ro'yxatdan o'tish
+- `/sozlamalar` (yoki `/settings`) — Sozlamalar menyusi (til, valyuta, mavzu)
+- `/daromad 100000` (yoki `/доход 100000`) — Daromadni tezkor kiritish
+- `/xarajat 50000` (yoki `/расход 50000`) — Xarajatni tezkor kiritish
+- `/hisobot` (yoki `/отчет`) — Joriy oy uchun tezkor moliyaviy hisobot
+- `/app` — Mini App-ni ochish havolasi
 
-### Шаг 1. Backend
+---
+
+## Mahalliy muhitda ishga tushirish (Local Setup)
+
+### 0-qadam. BotFather orqali bot yaratish va tokenni olish
+
+1. Telegram-da **@BotFather** botini oching.
+2. Yangi bot ochish uchun `/newbot` buyrug'ini yuboring (yoki mavjud bot uchun `/mybots` → botingizni tanlang → `API Token`).
+3. BotFather bergan API tokenni nusxalab oling (ko'rinishi: `8509050334:AAHY...`).
+
+> [!CAUTION]
+> **Xavfsizlik qoidasi:** Bot tokeni xuddi parolga o'xshaydi. Uni ochiq GitHub repozitoriylariga, chatlarga yoki skrinshotlarga qo'ymang! Faqat `.env` faylida saqlang. Agar token oshkor bo'lib qolsa, Telegram uni avtomatik bloklaydi — bunday holatda BotFather orqali `Revoke token` qilib, yangisini oling.
+
+---
+
+### 1-qadam. Backend (Server)
+
 ```bash
 cd backend
 npm install
 npm run dev
-# слушает http://localhost:3001, база — файл data.sqlite создастся сама
 ```
+- Server `http://localhost:3001` manzilida ishga tushadi.
+- SQLite ma'lumotlar bazasi fayli (`data.sqlite`) birinchi ishga tushganda avtomatik ravishda yaratiladi va barcha jadvallar o'rnatiladi.
 
-### Шаг 2. Bot
+---
+
+### 2-qadam. Telegram Bot
 
 ```bash
 cd bot
 cp .env.example .env
 ```
 
-Откройте файл `bot/.env` в любом текстовом редакторе и впишите:
-```
-BOT_TOKEN=токен_который_скопировали_у_botfather
+`bot/.env` faylini oching va quyidagi o'zgaruvchilarni to'ldiring:
+```env
+BOT_TOKEN=botfatherdan_olingan_token
 BACKEND_URL=http://localhost:3001
-MINIAPP_URL=https://ваш-адрес-miniapp   # см. Шаг 3 и раздел "Деплой"
+MINIAPP_URL=https://sizning-miniapp-manzilingiz.vercel.app/
+
+# Ixtiyoriy: ovozli xabarlarni tushunish uchun bepul Google Gemini kaliti:
+GEMINI_API_KEY=
 ```
 
-Затем:
+Keyin botni ishga tushiring:
 ```bash
 npm install
 npm run dev
 ```
-Если всё верно — в консоли появится `Бот запущен`. Напишите боту `/start` в Telegram — должен ответить приветствием.
+Konsolda `RentBot bot muvaffaqiyatli ishga tushdi` yozuvi paydo bo'ladi. Telegram-da botingizga `/start` yozib ko'ring!
 
-### Шаг 3. Mini App
+---
+
+### 3-qadam. Mini App (Frontend)
+
 ```bash
 cd miniapp
 npm install
 npm run dev
-# откроется на http://localhost:5173 — можно смотреть в браузере при разработке
+```
+- `http://localhost:5173` manzilida ishga tushadi.
+- Brauzerda ochib ko'rishingiz mumkin (foydalanuvchi ma'lumotlari ishlab chiqish rejimi uchun avtomatik to'ldiriladi).
+
+---
+
+## Serverga yuklash (Deploy bo'yicha to'liq qo'llanma)
+
+Telegram Mini App **albatta HTTPS protokolida ishlashi shart**, aks holda Telegram ilova ichida uni ochmaydi.
+
+Eng qulay va tezkor arxitektura:
+- **Frontend (miniapp)** ➔ **Vercel** (bepul HTTPS, avtomatik tezkor CDN).
+- **Backend va Bot** ➔ **Railway** (doimiy ishlaydigan Node.js konteynerlar va avtomatik HTTPS domen).
+
+```text
+[ Telegram Mini App (Vercel) ] ──(HTTPS)──> [ Backend API (Railway) ]
+                                                   ▲
+[ Telegram Bot (Railway) ] ────────────────────────┘
 ```
 
-На этом этапе локально можно проверить интерфейс в браузере, но кнопка
-"Открыть приложение" в самом Telegram заработает только после деплоя (см. ниже) —
-Telegram не откроет `localhost` внутри бота.
+---
 
-Чтобы Mini App достучался до вашего backend в проде, задайте переменную
-окружения `VITE_BACKEND_URL` при сборке (`npm run build`).
+### 1. Backend-ni Railway-da ishga tushirish
 
-## Деплой (важно!)
+1. [railway.com](https://railway.com) saytiga kiring va GitHub profilingiz orqali kiring.
+2. `New Project` ➔ `Deploy from GitHub repo` ➔ o'zingizning `mvp` repozitoriyangizni tanlang.
+3. Yangi yaratilgan servis ustiga bosing va **Settings** bo'limiga kiring:
+   - Servis nomini `backend` deb o'zgartiring.
+   - **Root Directory** bo'limiga **qat'iy ravishda `/backend`** deb yozing!
+4. **Settings** sahifasini pastga aylantirib, **Networking (Public Networking)** bo'limidagi **Generate Domain** tugmasini bosing.
+5. Railway sizga quyidagi ko'rinishdagi ochiq HTTPS manzil beradi:
+   `https://backend-production-xxxx.up.railway.app`
+6. Ushbu manzilni brauzerda tekshirib ko'ring: `https://...up.railway.app/health` — javob sifatida `{"ok": true}` chiqishi kerak!
 
-Telegram Mini App **обязательно должен быть на HTTPS** (не http и не localhost),
-иначе Telegram не откроет его внутри бота. Варианты для быстрого старта:
+---
 
-- **Backend + bot**: любой VPS (напр. Timeweb, Beget, Hetzner) или Railway/Render —
-  бот держит постоянное соединение с Telegram, поэтому serverless (Vercel functions)
-  не подойдёт для самого бота, а вот для backend API — можно.
-- **Miniapp**: Vercel / Netlify / Cloudflare Pages — идеально, там HTTPS из коробки
-  и бесплатный тариф хватит на старте.
+### 2. Mini App-ni Vercel-da ishga tushirish
 
-### Пошагово: Miniapp на Vercel (самый быстрый вариант)
+1. [vercel.com](https://vercel.com) saytiga kiring va GitHub orqali ro'yxatdan o'ting.
+2. `Add New Project` ➔ o'zingizning `mvp` repozitoriyangizni tanlang.
+3. Sozlamalarda:
+   - **Root Directory:** `miniapp` papkasini tanlang.
+   - **Environment Variables** bo'limiga quyidagini qo'shing:
+     - **Key (Nomi):** `VITE_BACKEND_URL`
+     - **Value (Qiymati):** `https://backend-production-xxxx.up.railway.app`
+     > [!IMPORTANT]
+     > Manzil oldida **`https://`** bo'lishi shart va oxirida ortiqcha slesh (`/`) bo'lmasligi kerak!
+4. **Deploy** tugmasini bosing. 1 daqiqada sizga tayyor `https://sizning-loyihangiz.vercel.app` manzili beriladi.
 
-1. Зарегистрируйтесь на vercel.com (можно через GitHub-аккаунт)
-2. Залейте папку `miniapp` в свой репозиторий на GitHub
-3. В Vercel: `Add New Project` → выберите репозиторий → Root Directory: `miniapp`
-4. В переменных окружения (`Environment Variables`) добавьте `VITE_BACKEND_URL`
-   со ссылкой на ваш будущий backend (Шаг ниже)
-5. Deploy — через минуту получите ссылку вида `https://ваш-проект.vercel.app`
+> [!TIP]
+> Agar kelgusida Vercel-da `VITE_BACKEND_URL` manzilini o'zgartirsangiz, o'zgarish kuchga kirishi uchun **Deployments** bo'limida oxirgi deploysti uchta nuqta (`...`) orqali **Redeploy** qilishingiz shart. Chunki Vite o'zgaruvchilarni faqat yig'ish (build) paytida kodga kiritadi.
 
-### Пошагово: Backend + Bot на Railway
+---
 
-1. Зарегистрируйтесь на railway.app
-2. `New Project` → `Deploy from GitHub repo` → выберите папку `backend`
-3. В `Variables` добавьте `PORT=3001` (Railway сам выдаст публичный HTTPS-адрес)
-4. Аналогично создайте второй сервис для папки `bot`, в `Variables` впишите:
-   - `BOT_TOKEN` — ваш токен от BotFather (**никогда не коммитьте его в GitHub!**)
-   - `BACKEND_URL` — адрес backend-сервиса из пункта 3
-   - `MINIAPP_URL` — адрес из Vercel (пункт выше)
+### 3. Bot-ni Railway-da ishga tushirish
 
-### Финальный шаг — связать всё в BotFather
+1. O'sha Railway loyihangizda ikkinchi servisni qo'shing: `+ New` ➔ `GitHub Repo` ➔ yana `mvp` repozitoriyasini tanlang.
+2. Servisning **Settings** qismiga kiring:
+   - Nomini `bot` deb qo'ying.
+   - **Root Directory** qismiga:
+     ```text
+     /bot
+     ```
+3. Servisning **Variables** (Muhit o'zgaruvchilari) bo'limiga kiring va quyidagilarni kiriting:
+   - `BOT_TOKEN` = BotFather'dan olingan toza tokeningiz;
+   - `BACKEND_URL` = 1-bosqichdagi backend manzili (`https://backend-production-xxxx.up.railway.app`);
+   - `MINIAPP_URL` = 2-bosqichdagi Vercel manzili (`https://sizning-loyihangiz.vercel.app`);
+   - `GEMINI_API_KEY` = (ixtiyoriy) Ovozli xabarlar uchun Google AI Studio kaliti.
+4. Railway botni ishga tushiradi va **Deploy Logs** qismida `RentBot bot muvaffaqiyatli ishga tushdi` degan yozuv chiqadi.
 
-1. `/mybots` → ваш бот → `Bot Settings` → `Menu Button` → `Configure menu button`
-   → вставьте ссылку на miniapp (Vercel URL) → напишите название кнопки, напр. "📊 Открыть"
-2. Готово — теперь и `/start`, и кнопка меню открывают ваше приложение.
+---
 
-## Оплата подписки (Payme / Click)
+### 4. Telegram-da Menyuni ulash (BotFather)
 
-Сейчас в `backend/src/routes/users.js` эндпоинт `POST /api/users/:id/subscribe` —
-это заглушка, которая сразу продлевает доступ на 30 дней. В проде туда нужно
-подключить реальный колбэк от Payme или Click после успешной оплаты
-(они присылают webhook на ваш сервер — тогда и вызывайте этот эндпоинт).
-Документация: https://developer.help.paycom.uz/ и https://docs.click.uz/
+Ilovani to'g'ridan-to'g'ri Telegram menyusidan ochiladigan qilish uchun:
+1. **@BotFather** botiga `/mybots` deb yozing.
+2. O'z botingizni tanlang ➔ **Bot Settings** ➔ **Menu Button** ➔ **Configure menu button**.
+3. Vercel havolasini yuboring (`https://sizning-loyihangiz.vercel.app`).
+4. Tugma nomini yuboring, masalan: `📊 Ochish` yoki `📊 Hisob-kitob`.
+5. Tayyor! Endi foydalanuvchi botni ochganda chap pastki burchakda ushbu tugma doim ko'rinib turadi.
 
-## Что уже готово (MVP + обновления)
+---
 
-- [x] Регистрация пользователя + 7-дневный триал (расчёт дней исправлен)
-- [x] Ввод дохода/расхода (в Mini App и командами `/доход`, `/расход` в самом боте)
-- [x] Расчёт: сколько можно откладывать на цели, не уходя в минус
-- [x] **Несколько целей одновременно** — рекомендованная сумма делится между ними
-- [x] **Прогноз в днях**, если цель близка (не только в неделях)
-- [x] **Кнопка "Купить"**, когда накоплений уже хватает
-- [x] **Отмена цели** без завершения — можно убрать, не покупая
-- [x] Регулярные напоминания (аренда и т.п.) — ежедневная проверка в 9:00
-- [x] Месячный отчёт простыми словами
-- [x] **Раздел "Долги"** — кто вам должен, сколько, история по каждому
-- [x] **Автообъединение должников по имени** — "Юлдаш" и "юлдаш" не создают дубликат
-- [x] **Дата возврата долга** — и напоминание себе, если человек просрочил
-- [x] **Категории расходов** (аренда, товар, зарплата, коммуналка) — выбираются при вводе
-- [x] **График по дням** (7 или 30 дней) — видно, в какие дни больше зарабатываешь
-- [x] **Сравнение с прошлым месяцем** в процентах — доход/расход/прибыль
-- [x] **Экспорт отчёта в PDF и Excel** — например, показать бухгалтеру
-- [x] **Напоминание "внеси доход/расход"**, если за день ещё нет ни одной записи (в 20:00)
-- [x] **Голосовой ввод суммы** — "заработал сто тысяч" бот распознает и запишет
-      (требует настройки, см. ниже)
-- [x] **Раздел "Подписка"** — отдельно видно, сколько дней триала/подписки осталось
-- [x] **Калькулятор** — быстрые расчёты внутри приложения
-- [x] Все ошибки теперь возвращаются понятным текстом, а не "тишиной" —
-      кнопки показывают, что происходит (идёт сохранение / ошибка / успех)
+## Ovozli xabarlarni tushunish (Gemini AI integratsiyasi)
 
-## Голосовой ввод — как включить
+Sotuvchi bozor yoki do'konda band bo'lganida summani yozib o'tirmasdan, shunchaki ovozli xabar yuborishi mumkin:
+- *«Bugun bir yuz ellik ming savdo qildim»* ➔ Bot daromadga 150 000 so'm qo'shadi.
+- *«Tushlikka qirq ming ketdi»* ➔ Bot xarajatga 40 000 so'm qo'shadi.
+- *«Заработал двести тысяч»* ➔ Bot daromadga 200 000 so'm qo'shadi.
 
-Голосовые сообщения распознаются через Gemini API от Google — у него есть
-бесплатный тариф с достаточным лимитом запросов для одного бота. Без ключа
-бот просто попросит написать сумму текстом — остальной функционал не пострадает.
+### Gemini kalitini qanday olish mumkin?
+1. [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasiga Google akkauntingiz orqali kiring.
+2. **Create API key** tugmasini bosing (bu bepul, bank kartasi talab qilinmaydi).
+3. Hosil bo'lgan kalitni nusxalab, Railway-dagi `bot` servisining `GEMINI_API_KEY` o'zgaruvchisiga qo'ying.
 
-1. Зайдите на aistudio.google.com/app/apikey, войдите через Google-аккаунт,
-   нажмите "Create API key" — ключ бесплатный, карту привязывать не нужно
-2. В Railway, в переменных окружения сервиса **bot**, добавьте:
-   - `VARIABLE_NAME`: `GEMINI_API_KEY`
-   - `VALUE`: ваш ключ (начинается на `AIza...`)
-3. Redeploy сервиса bot — после этого голосовые сообщения в чате с ботом
-   будут распознаваться автоматически
+---
 
-Бот понимает как цифры ("заработал 100000"), так и числа словами
-("заработал сто тысяч", "потратил пятьдесят тысяч"), включая составные
-("сто пятьдесят тысяч"). Сам определяет доход это или расход по словам
-("заработал/продал/получил" → доход, "потратил/купил/заплатил" → расход).
+## Eslatmalar va avtomatlashtirilgan xabarlar
 
-**О лимитах:** бесплатный тариф Gemini ограничен по числу запросов в минуту
-и в день. Для одного бота с обычной нагрузкой этого более чем достаточно;
-если бот вырастет и лимит станет тесен, тот же код продолжит работать —
-просто нужно будет подключить платный тариф в Google AI Studio.
+Bot har kuni quyidagi vaqtlarda server orqali foydalanuvchiga foydali eslatmalar yuboradi:
+- **09:00** — Bugungi muntazam to'lovlar (ijara, kommunal xizmatlar va h.k.);
+- **10:00** — Qaytish muddati o'tib ketgan qarzlar haqida eslatma (kim qancha qaytarishi kerakligi bilan);
+- **20:00** — Agar foydalanuvchi kun davomida birorta ham daromad yoki xarajat yozmagan bo'lsa, xushmuomala eslatma.
 
-## Как обновить уже задеплоенный проект (Railway + Vercel)
+Barcha eslatmalar foydalanuvchi tanlagan tilda (o'zbekcha yoki ruscha) va tanlangan valyutada (so'm yoki rubl) yuboriladi.
 
-Если backend и miniapp уже развёрнуты и работают, обновление — это просто
-залить новый код в тот же GitHub-репозиторий, платформы подхватят сами:
+---
 
-1. Скачайте этот новый архив, замените содержимое папок `backend`, `bot`,
-   `miniapp` в вашем локальном репозитории (либо скопируйте файлы вручную)
-2. В терминале в корне репозитория:
-   ```bash
-   git add .
-   git commit -m "Обновление: несколько целей, долги, подписка, калькулятор"
-   git push
-   ```
-3. Railway и Vercel сами увидят новый коммit на GitHub и передеплоят —
-   обычно занимает 1-3 минуты, прогресс виден во вкладке `Deployments`
-4. **Важно:** база данных backend (SQLite-файл) при деплое новой версии
-   **не удаляется** — старые записи сохранятся, поменяется только схема
-   (автоматически добавится недостающая колонка `status` у целей)
-5. После деплоя проверьте `https://ваш-backend.up.railway.app/health` —
-   должно быть `{"ok":true}`, затем откройте miniapp и проверьте новые разделы
+## To'lov tizimlari (Payme va Click integratsiyasi)
 
-Специальных действий с переменными окружения (`BOT_TOKEN`, `VITE_BACKEND_URL`
-и т.п.) делать не нужно — они не менялись.
+Hozirgi MVP versiyada `backend/src/routes/users.js` faylidagi `POST /api/users/:id/subscribe` yo'li 30 kunga sinov obunasini darhol uzaytiruvchi namuna sifatida sozlangan.
 
-## Структура приложения (Mini App)
+Haqiqiy biznes uchun Payme yoki Click-ni ulash tartibi:
+1. [Payme for Business](https://developer.help.paycom.uz/) yoki [Click Merchant](https://docs.click.uz/) tizimida ro'yxatdan o'tasiz.
+2. Ular sizning backend manzilingizga to'lov amalga oshgani haqida Webhook (bildirishnoma) yuboradi.
+3. Webhook muvaffaqiyatli kelganda foydalanuvchining `subscribed_until` sanasini ma'lumotlar bazasida yangilaysiz.
 
-Нижнее меню: **Главная** (быстрый ввод дохода/расхода) · **Цели** (несколько
-целей сразу, прогноз, кнопка "Купить") · **Долги** (кто должен, сколько) ·
-**Ещё** (раскрывает: Напоминания, Отчёт, Калькулятор, Подписка).
+---
+
+## Texnologiyalar to'plami (Tech Stack)
+
+- **Backend:** Node.js, Express, Better-SQLite3 (WAL rejimi bilan tezkor ishlash), PDFKit, XLSX.
+- **Bot:** Telegraf (Telegram Bot API framework), Node-Cron, Axios, Google Gemini 1.5 Flash.
+- **Frontend (Mini App):** React 18, Vite, React Router, Axios, CSS Variables (Telegram xavfsiz dizayn tizimi).
