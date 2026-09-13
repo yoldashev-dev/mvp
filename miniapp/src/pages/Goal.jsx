@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
+import { useSettings } from "../lib/settingsContext.jsx";
 import { hapticImpact } from "../lib/telegram.js";
 import { CloseIcon, CheckIcon } from "../components/Icon.jsx";
 
 export default function Goal({ telegramId }) {
   const showToast = useToast();
+  const { currencySymbol } = useSettings();
   const [items, setItems] = useState(null); // null = загрузка
   const [form, setForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -96,7 +98,7 @@ export default function Goal({ telegramId }) {
             </div>
             <p className="big-number">
               {fmt(goal.saved_amount)}
-              <span className="sum-unit">/ {fmt(goal.target_amount)} сум</span>
+              <span className="sum-unit">/ {fmt(goal.target_amount)} {currencySymbol}</span>
             </p>
             <div className="progress-track">
               <div className="progress-fill" style={{ width: `${pct}%` }} />
@@ -123,7 +125,7 @@ export default function Goal({ telegramId }) {
               <>
                 <p style={{ margin: "10px 0 4px" }}>
                   Можешь откладывать примерно{" "}
-                  <strong>{fmt(projection.daily_for_this_goal)} сум в день</strong> без риска для бизнеса.
+                  <strong>{fmt(projection.daily_for_this_goal)} {currencySymbol} в день</strong> без риска для бизнеса.
                 </p>
                 <p className="muted">
                   {projection.weeks_to_goal
@@ -157,10 +159,11 @@ export default function Goal({ telegramId }) {
           <input
             className="field"
             inputMode="numeric"
-            placeholder="Сколько стоит, сум"
+            placeholder={`Сколько стоит, ${currencySymbol}`}
             value={target}
             onChange={(e) => setTarget(e.target.value)}
           />
+
           <div style={{ display: "flex", gap: 8 }}>
             <button className="secondary-btn" onClick={() => setForm(false)}>
               Отмена

@@ -1,64 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { api, errorMessage } from "../lib/api.js";
+import { useSettings } from "../lib/settingsContext.jsx";
 import { useToast } from "../lib/toast.jsx";
 import { hapticImpact } from "../lib/telegram.js";
 import { ChevronRightIcon } from "../components/Icon.jsx";
 
-export default function Settings({ telegramId }) {
+export default function Settings() {
   const showToast = useToast();
-  const [settings, setSettings] = useState({
-    language: "ru",
-    currency: "uzs",
-    theme: "light",
-  });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    api
-      .get(`/api/users/${telegramId}/settings`)
-      .then((res) => {
-        if (res.data) {
-          setSettings(res.data);
-          if (res.data.theme === "dark") {
-            document.body.classList.add("dark");
-          } else {
-            document.body.classList.remove("dark");
-          }
-        }
-      })
-      .catch((err) => showToast(errorMessage(err)))
-      .finally(() => setLoading(false));
-  }, [telegramId]);
+  const { language, currency, theme, updateSettings } = useSettings();
 
   const update = async (key, val) => {
-    const next = { ...settings, [key]: val };
-    setSettings(next);
     hapticImpact("medium");
-
-    if (key === "theme") {
-      if (val === "dark") {
-        document.body.classList.add("dark");
-      } else {
-        document.body.classList.remove("dark");
-      }
-    }
-
-    setSaving(true);
-    try {
-      await api.patch(`/api/users/${telegramId}/settings`, { [key]: val });
-      const msg =
-        next.language === "uz" ? "Sozlamalar saqlandi!" : "Настройки сохранены!";
-      showToast(msg, "success");
-    } catch (err) {
-      showToast(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
+    await updateSettings({ [key]: val });
+    const isUz = key === "language" ? val === "uz" : language === "uz";
+    showToast(isUz ? "Sozlamalar saqlandi!" : "Настройки сохранены!", "success");
   };
 
-  const isUz = settings.language === "uz";
+  const isUz = language === "uz";
 
   return (
     <div>
@@ -94,7 +52,7 @@ export default function Settings({ telegramId }) {
         <div style={{ display: "flex", gap: 8 }}>
           <button
             type="button"
-            className={"tab-btn" + (settings.language === "ru" ? " active" : "")}
+            className={"tab-btn" + (language === "ru" ? " active" : "")}
             style={{ flex: 1, padding: "10px 0" }}
             onClick={() => update("language", "ru")}
           >
@@ -102,7 +60,7 @@ export default function Settings({ telegramId }) {
           </button>
           <button
             type="button"
-            className={"tab-btn" + (settings.language === "uz" ? " active" : "")}
+            className={"tab-btn" + (language === "uz" ? " active" : "")}
             style={{ flex: 1, padding: "10px 0" }}
             onClick={() => update("language", "uz")}
           >
@@ -122,7 +80,7 @@ export default function Settings({ telegramId }) {
         <div style={{ display: "flex", gap: 8 }}>
           <button
             type="button"
-            className={"tab-btn" + (settings.currency === "uzs" ? " active" : "")}
+            className={"tab-btn" + (currency === "uzs" ? " active" : "")}
             style={{ flex: 1, padding: "10px 0" }}
             onClick={() => update("currency", "uzs")}
           >
@@ -130,7 +88,7 @@ export default function Settings({ telegramId }) {
           </button>
           <button
             type="button"
-            className={"tab-btn" + (settings.currency === "rub" ? " active" : "")}
+            className={"tab-btn" + (currency === "rub" ? " active" : "")}
             style={{ flex: 1, padding: "10px 0" }}
             onClick={() => update("currency", "rub")}
           >
@@ -150,7 +108,7 @@ export default function Settings({ telegramId }) {
         <div style={{ display: "flex", gap: 8 }}>
           <button
             type="button"
-            className={"tab-btn" + (settings.theme === "light" ? " active" : "")}
+            className={"tab-btn" + (theme === "light" ? " active" : "")}
             style={{ flex: 1, padding: "10px 0" }}
             onClick={() => update("theme", "light")}
           >
@@ -158,7 +116,7 @@ export default function Settings({ telegramId }) {
           </button>
           <button
             type="button"
-            className={"tab-btn" + (settings.theme === "dark" ? " active" : "")}
+            className={"tab-btn" + (theme === "dark" ? " active" : "")}
             style={{ flex: 1, padding: "10px 0" }}
             onClick={() => update("theme", "dark")}
           >

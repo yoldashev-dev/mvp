@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
+import { useSettings } from "../lib/settingsContext.jsx";
 import { CloseIcon } from "../components/Icon.jsx";
 
 export default function Reminders({ telegramId }) {
   const showToast = useToast();
+  const { currencySymbol } = useSettings();
   const [list, setList] = useState([]);
+
   const [form, setForm] = useState(false);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -75,7 +78,7 @@ export default function Reminders({ telegramId }) {
               {r.title} · {r.day_of_month} числа
             </span>
             <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              {r.amount ? `${fmt(r.amount)} сум` : ""}
+              {r.amount ? `${fmt(r.amount)} ${currencySymbol}` : ""}
               <button onClick={() => remove(r.id)} className="icon-btn" style={{ color: "var(--accent-alert)" }}>
                 <CloseIcon width={16} height={16} />
               </button>
@@ -100,10 +103,11 @@ export default function Reminders({ telegramId }) {
           <input
             className="field"
             inputMode="numeric"
-            placeholder="Сумма, сум (необязательно)"
+            placeholder={`Сумма, ${currencySymbol} (необязательно)`}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+
           <input
             className="field"
             inputMode="numeric"

@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import { initTelegram, getTelegramUser } from "./lib/telegram.js";
 import { api, errorMessage } from "./lib/api.js";
 import { useToast } from "./lib/toast.jsx";
+import { SettingsProvider } from "./lib/settingsContext.jsx";
 import BottomNav from "./components/BottomNav.jsx";
 import Home from "./pages/Home.jsx";
 import Goal from "./pages/Goal.jsx";
@@ -29,35 +30,31 @@ export default function App() {
         first_name: tgUser.first_name,
         username: tgUser.username,
       })
-      .then((res) => {
-        if (res.data?.theme === "dark") {
-          document.body.classList.add("dark");
-        } else {
-          document.body.classList.remove("dark");
-        }
-      })
       .catch((err) => showToast(errorMessage(err)));
   }, []);
 
   if (!user) return null;
 
   return (
-    <div className="app-shell">
-      <main className="app-main">
-        <Routes>
-          <Route path="/" element={<Home telegramId={user.id} />} />
-          <Route path="/goal" element={<Goal telegramId={user.id} />} />
-          <Route path="/debts" element={<Debts telegramId={user.id} />} />
-          <Route path="/reminders" element={<Reminders telegramId={user.id} />} />
-          <Route path="/report" element={<Report telegramId={user.id} />} />
-          <Route path="/calculator" element={<Calculator />} />
-          <Route path="/subscription" element={<Subscription telegramId={user.id} />} />
-          <Route path="/more" element={<More />} />
-          <Route path="/settings" element={<Settings telegramId={user.id} />} />
-        </Routes>
-      </main>
-      <BottomNav />
-    </div>
+    <SettingsProvider telegramId={user.id}>
+      <div className="app-shell">
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Home telegramId={user.id} />} />
+            <Route path="/goal" element={<Goal telegramId={user.id} />} />
+            <Route path="/debts" element={<Debts telegramId={user.id} />} />
+            <Route path="/reminders" element={<Reminders telegramId={user.id} />} />
+            <Route path="/report" element={<Report telegramId={user.id} />} />
+            <Route path="/calculator" element={<Calculator />} />
+            <Route path="/subscription" element={<Subscription telegramId={user.id} />} />
+            <Route path="/more" element={<More />} />
+            <Route path="/settings" element={<Settings telegramId={user.id} />} />
+          </Routes>
+        </main>
+        <BottomNav />
+      </div>
+    </SettingsProvider>
   );
 }
+
 

@@ -2,9 +2,13 @@ import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage, BACKEND_URL } from "../lib/api.js";
 import { openLink } from "../lib/telegram.js";
 import { useToast } from "../lib/toast.jsx";
+import { useSettings } from "../lib/settingsContext.jsx";
 
 export default function Report({ telegramId }) {
   const showToast = useToast();
+  const { currencySymbol, language } = useSettings();
+  const isUz = language === "uz";
+
   const [report, setReport] = useState(null);
   const [chart, setChart] = useState(null);
   const [chartDays, setChartDays] = useState(7);
@@ -40,23 +44,26 @@ export default function Report({ telegramId }) {
   return (
     <div>
       <div className="card">
-        <p className="card-title">Этот месяц</p>
+        <p className="card-title">{isUz ? "Shu oy" : "Этот месяц"}</p>
         <p style={{ margin: "0 0 4px" }}>
-          Заработали: <strong>{fmt(report.income)} сум</strong>{" "}
+          {isUz ? "Daromad: " : "Заработали: "}<strong>{fmt(report.income)} {currencySymbol}</strong>{" "}
           <ChangeBadge pct={report.change.income_pct} />
         </p>
         <p style={{ margin: "0 0 4px" }}>
-          Потратили: <strong>{fmt(report.expense)} сум</strong>{" "}
+          {isUz ? "Xarajat: " : "Потратили: "}<strong>{fmt(report.expense)} {currencySymbol}</strong>{" "}
           <ChangeBadge pct={report.change.expense_pct} inverse />
         </p>
         <p style={{ margin: 0, color: report.profit >= 0 ? "var(--accent)" : "var(--accent-alert)" }}>
-          Прибыль: <strong>{fmt(report.profit)} сум</strong>{" "}
+          {isUz ? "Sof foyda: " : "Прибыль: "}<strong>{fmt(report.profit)} {currencySymbol}</strong>{" "}
           <ChangeBadge pct={report.change.profit_pct} />
         </p>
         <p className="muted" style={{ marginTop: 8 }}>
-          По сравнению с прошлым месяцем ({fmt(report.previous_month.profit)} сум прибыли)
+          {isUz
+            ? `O'tgan oyga nisbatan (${fmt(report.previous_month.profit)} ${currencySymbol} foyda)`
+            : `По сравнению с прошлым месяцем (${fmt(report.previous_month.profit)} ${currencySymbol} прибыли)`}
         </p>
       </div>
+
 
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -122,7 +129,7 @@ export default function Report({ telegramId }) {
           {report.categories.map((c) => (
             <div className="list-row" key={c.category}>
               <span>{c.category}</span>
-              <span>{fmt(c.amount)} сум</span>
+              <span>{fmt(c.amount)} {currencySymbol}</span>
             </div>
           ))}
         </div>

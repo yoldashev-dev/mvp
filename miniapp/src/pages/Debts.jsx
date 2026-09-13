@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { api, fmt, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
-import { CloseIcon, ChevronRightIcon } from "../components/Icon.jsx";
+import { useSettings } from "../lib/settingsContext.jsx";
+import { ChevronRightIcon, CloseIcon } from "../components/Icon.jsx";
 
 export default function Debts({ telegramId }) {
   const showToast = useToast();
-  const [data, setData] = useState(null); // { people, total_owed }
-  const [openPerson, setOpenPerson] = useState(null); // id открытой карточки
+  const { currencySymbol } = useSettings();
+  const [data, setData] = useState(null); // { people: [], total_owed: 0 }
+  const [openPerson, setOpenPerson] = useState(null); // debtor_id | null
   const [form, setForm] = useState(false);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -69,7 +71,7 @@ export default function Debts({ telegramId }) {
         <p className="card-title">Всего должны вам</p>
         <p className="big-number" style={{ color: data.total_owed > 0 ? "var(--accent)" : undefined }}>
           {fmt(data.total_owed)}
-          <span className="sum-unit">сум</span>
+          <span className="sum-unit">{currencySymbol}</span>
         </p>
       </div>
 
@@ -85,7 +87,7 @@ export default function Debts({ telegramId }) {
               {p.overdue && <span className="pill pill-red" style={{ marginLeft: 8 }}>просрочено</span>}
             </span>
             <span style={{ color: p.balance > 0 ? "var(--accent)" : "var(--ink)", display: "flex", alignItems: "center", gap: 2 }}>
-              {fmt(p.balance)} сум
+              {fmt(p.balance)} {currencySymbol}
               <ChevronRightIcon width={16} height={16} style={{ color: "var(--hint)" }} />
             </span>
           </div>
@@ -108,10 +110,11 @@ export default function Debts({ telegramId }) {
           <input
             className="field"
             inputMode="numeric"
-            placeholder="Сколько должен, сум"
+            placeholder={`Сколько должен, ${currencySymbol}`}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+
           <p className="muted" style={{ margin: "0 0 6px" }}>Когда обещал вернуть (необязательно)</p>
           <input
             className="field"
@@ -199,7 +202,7 @@ function PersonDetail({ telegramId, personId, onBack }) {
         </div>
         <p className="big-number" style={{ color: data.balance > 0 ? "var(--accent)" : "var(--ink)" }}>
           {fmt(data.balance)}
-          <span className="sum-unit">сум {data.balance > 0 ? "должен" : "долга нет"}</span>
+          <span className="sum-unit">{currencySymbol} {data.balance > 0 ? "должен" : "долга нет"}</span>
         </p>
         {data.debtor.due_date && data.balance > 0 && (
           <p className={data.debtor.overdue ? "pill pill-red" : "pill pill-gold"} style={{ marginTop: 8, display: "inline-block" }}>
@@ -213,7 +216,7 @@ function PersonDetail({ telegramId, personId, onBack }) {
         <input
           className="field"
           inputMode="numeric"
-          placeholder="Сумма, сум"
+          placeholder={`Сумма, ${currencySymbol}`}
           value={entryAmount}
           onChange={(e) => setEntryAmount(e.target.value)}
         />
@@ -244,10 +247,11 @@ function PersonDetail({ telegramId, personId, onBack }) {
             <span>{e.type === "lent" ? "Дал в долг" : "Вернул"}</span>
             <span style={{ color: e.type === "lent" ? "var(--ink)" : "var(--accent)" }}>
               {e.type === "lent" ? "+" : "−"}
-              {fmt(e.amount)} сум
+              {fmt(e.amount)} {currencySymbol}
             </span>
           </div>
         ))}
+
       </div>
     </div>
   );

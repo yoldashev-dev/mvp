@@ -8,17 +8,20 @@ import {
   CardIcon,
   ChevronRightIcon,
 } from "../components/Icon.jsx";
-
-const rows = [
-  { to: "/settings", Icon: SettingsIcon, label: "Настройки" },
-  { to: "/reminders", Icon: ClockIcon, label: "Регулярные платежи" },
-  { to: "/report", Icon: ChartIcon, label: "Отчёт за месяц" },
-  { to: "/calculator", Icon: CalculatorIcon, label: "Калькулятор" },
-  { to: "/subscription", Icon: CardIcon, label: "Подписка" },
-];
-
+import { useSettings } from "../lib/settingsContext.jsx";
 
 export default function More() {
+  const { language } = useSettings();
+  const isUz = language === "uz";
+
+  const rows = [
+    { to: "/settings", Icon: SettingsIcon, label: isUz ? "Sozlamalar" : "Настройки" },
+    { to: "/reminders", Icon: ClockIcon, label: isUz ? "Muntazam to'lovlar" : "Регулярные платежи" },
+    { to: "/report", Icon: ChartIcon, label: isUz ? "Oylik hisobot" : "Отчёт за месяц" },
+    { to: "/calculator", Icon: CalculatorIcon, label: isUz ? "Kalkulyator" : "Калькулятор" },
+    { to: "/subscription", Icon: CardIcon, label: isUz ? "Obuna" : "Подписка" },
+  ];
+
   return (
     <div>
       {rows.map(({ to, Icon, label }) => (

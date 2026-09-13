@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { api, errorMessage } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
+import { useSettings } from "../lib/settingsContext.jsx";
 
 export default function Subscription({ telegramId }) {
   const showToast = useToast();
+  const { currency, language } = useSettings();
   const [status, setStatus] = useState(null);
   const [paying, setPaying] = useState(false);
+
+  const isUz = language === "uz";
+  const priceFormatted = currency === "rub" ? "1 500 ₽" : "200 000 сум";
 
   const load = () => {
     api
@@ -19,9 +24,8 @@ export default function Subscription({ telegramId }) {
   const pay = async () => {
     setPaying(true);
     try {
-      // Заглушка — в проде здесь будет переход на Payme/Click checkout
       await api.post(`/api/users/${telegramId}/subscribe`);
-      showToast("Оплата прошла успешно!", "success");
+      showToast(isUz ? "To'lov muvaffaqiyatli amalga oshirildi!" : "Оплата прошла успешно!", "success");
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -35,39 +39,39 @@ export default function Subscription({ telegramId }) {
   return (
     <div>
       <div className="card">
-        <p className="card-title">Бесплатный период</p>
+        <p className="card-title">{isUz ? "Sinov davri" : "Бесплатный период"}</p>
         {status.trial_active ? (
           <p className="big-number">
             {status.trial_days_left}
-            <span className="sum-unit">{dayWord(status.trial_days_left)} осталось</span>
+            <span className="sum-unit"> {isUz ? "kun qoldi" : `${dayWord(status.trial_days_left)} осталось`}</span>
           </p>
         ) : (
-          <p className="muted">Бесплатный период закончился</p>
+          <p className="muted">{isUz ? "Sinov davri tugadi" : "Бесплатный период закончился"}</p>
         )}
       </div>
 
       <div className="card">
-        <p className="card-title">Подписка</p>
+        <p className="card-title">{isUz ? "Obuna" : "Подписка"}</p>
         {status.subscription_active ? (
           <>
             <p className="big-number">
               {status.subscription_days_left}
-              <span className="sum-unit">{dayWord(status.subscription_days_left)} осталось</span>
+              <span className="sum-unit"> {isUz ? "kun qoldi" : `${dayWord(status.subscription_days_left)} осталось`}</span>
             </p>
             <p className="muted" style={{ marginTop: 6 }}>
-              200 000 сум/мес · продлится автоматически
+              {priceFormatted}{isUz ? "/oy · avtomatik uzaytiriladi" : "/мес · продлится автоматически"}
             </p>
           </>
         ) : (
           <>
             <p style={{ margin: "0 0 12px" }}>
-              200 000 сум / месяц — доступ ко всем функциям без ограничений.
+              {priceFormatted} {isUz ? "/ oy — barcha funksiyalardan cheklovlarsiz foydalanish." : "/ месяц — доступ ко всем функциям без ограничений."}
             </p>
             <button className="primary-btn" onClick={pay} disabled={paying}>
-              {paying ? "Обрабатываю…" : "Оплатить 200 000 сум"}
+              {paying ? (isUz ? "Kutilmoqda…" : "Обрабатываю…") : `${isUz ? "To'lash" : "Оплатить"} ${priceFormatted}`}
             </button>
             <p className="muted" style={{ marginTop: 10 }}>
-              Оплата через Payme / Click
+              {isUz ? "Payme / Click / Karta orqali to'lov" : "Оплата через Payme / Click / Карту"}
             </p>
           </>
         )}
@@ -76,7 +80,7 @@ export default function Subscription({ telegramId }) {
       {!status.trial_active && !status.subscription_active && (
         <div className="card" style={{ borderColor: "var(--accent-alert)" }}>
           <p className="muted" style={{ color: "var(--accent-alert)" }}>
-            Доступ к приложению ограничен — оформите подписку, чтобы продолжить пользоваться ботом.
+            {isUz ? "Ilovadan foydalanish cheklangan — davom ettirish uchun obunani rasmiylashtiring." : "Доступ к приложению ограничен — оформите подписку, чтобы продолжить пользоваться ботом."}
           </p>
         </div>
       )}

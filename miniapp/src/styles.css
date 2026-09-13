@@ -16,34 +16,110 @@
 }
 
 body.dark {
-  --bg: #121212;
-  --surface: #1E1E1E;
-  --ink: #F3F4F6;
-  --hint: #9CA3AF;
-  --line: #2D2D2D;
-  --line-strong: #E5E7EB;
-  --accent: #4F7FFF;
+  --bg: #121214;
+  --surface: #1E1E24;
+  --ink: #FFFFFF;
+  --hint: #8E8E93;
+  --line: #2C2C34;
+  --line-strong: #3D3D48;
+  --accent: #3B82F6;
+  --accent-alert: #EF4444;
 }
 
+/* Action buttons in Dark Mode */
+body.dark .action-btn.income {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  border: 1px solid #FFFFFF !important;
+}
+body.dark .action-btn.income * {
+  color: #000000 !important;
+}
+
+body.dark .action-btn.expense {
+  background: #1E1E24 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #3D3D48 !important;
+}
+body.dark .action-btn.expense * {
+  color: #FFFFFF !important;
+}
+
+/* Primary and secondary buttons */
 body.dark .primary-btn {
   background: #FFFFFF;
-  color: #111111;
+  color: #000000;
 }
-
 body.dark .secondary-btn {
-  background: #2D2D2D;
-  color: #F3F4F6;
+  background: #282830;
+  color: #FFFFFF;
+  border-color: #3D3D48;
 }
 
+/* Tabs */
+body.dark .tab-btn {
+  background: #1E1E24;
+  border-color: #2C2C34;
+  color: #8E8E93;
+}
+body.dark .tab-btn.active {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: #000000 !important;
+}
+
+/* Form fields */
+body.dark .field {
+  background: #25252D;
+  border-color: #383844;
+  color: #FFFFFF;
+}
+body.dark .field:focus {
+  border-color: #3B82F6;
+}
+
+/* Bottom Nav */
 body.dark .bottom-nav {
-  background: rgba(30, 30, 30, 0.95);
-  border-top-color: #2D2D2D;
+  background: rgba(26, 26, 32, 0.95);
+  border-top-color: #2C2C34;
 }
 
-body.dark .action-btn.income,
-body.dark .action-btn.expense {
-  border-color: #2D2D2D;
+/* More menu */
+body.dark .more-row {
+  background: #1E1E24;
+  border-color: #2C2C34;
+  color: #FFFFFF;
 }
+body.dark .more-row-icon {
+  color: #FFFFFF;
+}
+
+/* Calculator */
+body.dark .calc-display {
+  background: #1E1E24;
+  border-color: #2C2C34;
+  color: #FFFFFF;
+}
+body.dark .calc-key {
+  background: #25252D;
+  border-color: #2C2C34;
+  color: #FFFFFF;
+}
+body.dark .calc-key.op {
+  background: #3B82F6;
+  color: #FFFFFF;
+}
+body.dark .calc-key.equals {
+  background: #FFFFFF;
+  color: #000000;
+}
+
+/* Modal sheet */
+body.dark .modal-sheet {
+  background: #1E1E24;
+  color: #FFFFFF;
+}
+
 
 
 * { box-sizing: border-box; }
