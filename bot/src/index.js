@@ -241,6 +241,32 @@ bot.action("menu:close", async (ctx) => {
   } catch {}
 });
 
+bot.action(/^quick:(income|expense):(\d+)$/, async (ctx) => {
+  const type = ctx.match[1];
+  const amount = parseInt(ctx.match[2], 10);
+  const settings = await getUserSettings(ctx.from.id);
+  const lang = settings.language;
+
+  try {
+    await api.post("/api/transactions", {
+      telegram_id: ctx.from.id,
+      type,
+      amount,
+    });
+    await ctx.answerCbQuery(lang === "uz" ? "Saqlandi!" : "Сохранено!");
+    const moneyStr = formatMoney(amount, settings.currency, lang);
+    await ctx.editMessageText(
+      type === "income"
+        ? t(lang, "income_recorded", moneyStr)
+        : t(lang, "expense_recorded", moneyStr),
+      { parse_mode: "HTML" }
+    );
+  } catch (err) {
+    console.error("Tranzaksiyani saqlashda xatolik:", err.message);
+    await ctx.answerCbQuery(lang === "uz" ? "Xatolik yuz berdi" : "Произошла ошибка");
+  }
+});
+
 // ---- Daromad / Доход ----------------------------------------------------
 async function handleIncome(ctx) {
   const settings = await getUserSettings(ctx.from.id);
@@ -322,19 +348,39 @@ bot.on("voice", async (ctx) => {
       "Bu tadbirkor/sotuvchining bugungi daromad yoki xarajati haqidagi ovozli xabari (ruscha yoki o'zbekcha bo'lishi mumkin). " +
       "Uning aytgan gapini o'sha tilda so'zma-so'z matnga o'gir. Faqat matnning o'zini javob qilib qaytar, hech qanday qo'shimcha izoh va qo'shtirnoqsiz.";
 
-    const geminiResp = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        contents: [
-          {
-            parts: [
-              { inline_data: { mime_type: "audio/ogg", data: base64Audio } },
-              { text: promptText },
-            ],
-          },
-        ],
-      }
-    );
+    let geminiResp;
+    try {
+      geminiResp = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [
+            {
+              parts: [
+                { inline_data: { mime_type: "audio/ogg", data: base64Audio } },
+                { text: promptText },
+              ],
+            },
+          ],
+        },
+        { timeout: 20000 }
+      );
+    } catch (apiErr) {
+      console.warn("gemini-3.6-flash failed, trying gemini-3.5-flash-lite fallback:", apiErr.response?.data || apiErr.message);
+      geminiResp = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [
+            {
+              parts: [
+                { inline_data: { mime_type: "audio/ogg", data: base64Audio } },
+                { text: promptText },
+              ],
+            },
+          ],
+        },
+        { timeout: 20000 }
+      );
+    }
 
     const text = (
       geminiResp.data?.candidates?.[0]?.content?.parts?.[0]?.text || ""
@@ -350,10 +396,26 @@ bot.on("voice", async (ctx) => {
     }
 
     const lower = text.toLowerCase();
-    const isExpense = /потрат|расход|купил|заплатил|sarfladim|xarajat|ishlatdim|berdim|sotib oldim/.test(lower);
-    const isIncome = /заработ|доход|продал|получил|ishladim|daromad|sotdim|tushdi|foyda/.test(lower);
-    const type = isExpense && !isIncome ? "expense" : "income";
+    const isExpense = /потрат|расход|купил|заплатил|минус|sarfladim|xarajat|ishlatdim|berdim|chiqim|sotib oldim/.test(lower) || text.startsWith("-");
+    const isIncome = /заработ|доход|продал|получил|плюс|ishladim|daromad|kirim|sotdim|tushdi|foyda/.test(lower) || text.startsWith("+");
 
+    if (!isExpense && !isIncome) {
+      const moneyStr = formatMoney(amount, settings.currency, lang);
+      return ctx.replyWithHTML(
+        lang === "uz"
+          ? `Eshitildi: «<i>${text}</i>»\nSumma: <b>${moneyStr}</b>\nBu daromadmi yoki xarajat?`
+          : `Расслышал: «<i>${text}</i>»\nСумма: <b>${moneyStr}</b>\nЭто доход или расход?`,
+        Markup.inlineKeyboard([
+          [
+            Markup.button.callback(lang === "uz" ? "💰 Daromad" : "💰 Доход", `quick:income:${amount}`),
+            Markup.button.callback(lang === "uz" ? "💸 Xarajat" : "💸 Расход", `quick:expense:${amount}`),
+          ],
+          [Markup.button.callback(t(lang, "btn_close"), "menu:close")],
+        ])
+      );
+    }
+
+    const type = isExpense ? "expense" : "income";
     await api.post("/api/transactions", { telegram_id: ctx.from.id, type, amount });
 
     const moneyStr = formatMoney(amount, settings.currency, lang);
@@ -362,6 +424,60 @@ bot.on("voice", async (ctx) => {
     console.error("Ovozni aniqlashda xatolik:", err.response?.data || err.message);
     ctx.replyWithHTML(t(lang, "voice_error"));
   }
+});
+
+// ---- Matnli xabarlar (Oddiy matn: "доход 50000", "расход 20к", "50000" va h.k.) ----
+bot.on("text", async (ctx) => {
+  const text = ctx.message.text.trim();
+  if (text.startsWith("/")) return; // buyruqlar alohida ishlanadi
+
+  const settings = await getUserSettings(ctx.from.id);
+  const lang = settings.language;
+  const amount = parseAmount(text);
+
+  if (!amount) {
+    // Foydalanuvchi oddiy matn yuborgan (summasiz)
+    return ctx.replyWithHTML(
+      lang === "uz"
+        ? "Yozuv kiritish uchun summani ko'rsating, masalan:\n• <code>Daromad 100 000</code>\n• <code>Xarajat 50 000</code>\nYoki ovozli xabar (ГС) yuboring 🎙"
+        : "Чтобы внести запись, укажите сумму, например:\n• <code>Доход 100 000</code>\n• <code>Расход 50 000</code>\nИли просто отправьте голосовое сообщение 🎙"
+    );
+  }
+
+  const lower = text.toLowerCase();
+  const isExpense = /потрат|расход|купил|заплатил|минус|sarfladim|xarajat|ishlatdim|berdim|chiqim|sotib oldim/.test(lower) || text.startsWith("-");
+  const isIncome = /заработ|доход|продал|получил|плюс|ishladim|daromad|kirim|sotdim|tushdi|foyda/.test(lower) || text.startsWith("+");
+
+  if (!isExpense && !isIncome) {
+    // Faqat raqam yozilgan bo'lsa (masalan: "50000") — tanlash tugmalarini chiqaramiz!
+    const moneyStr = formatMoney(amount, settings.currency, lang);
+    return ctx.replyWithHTML(
+      lang === "uz"
+        ? `Summa: <b>${moneyStr}</b>\nBu daromadmi yoki xarajat?`
+        : `Сумма: <b>${moneyStr}</b>\nЭто доход или расход?`,
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback(lang === "uz" ? "💰 Daromad" : "💰 Доход", `quick:income:${amount}`),
+          Markup.button.callback(lang === "uz" ? "💸 Xarajat" : "💸 Расход", `quick:expense:${amount}`),
+        ],
+        [Markup.button.callback(t(lang, "btn_close"), "menu:close")],
+      ])
+    );
+  }
+
+  const type = isExpense ? "expense" : "income";
+  await api.post("/api/transactions", {
+    telegram_id: ctx.from.id,
+    type,
+    amount,
+  });
+
+  const moneyStr = formatMoney(amount, settings.currency, lang);
+  ctx.replyWithHTML(
+    type === "income"
+      ? t(lang, "income_recorded", moneyStr)
+      : t(lang, "expense_recorded", moneyStr)
+  );
 });
 
 // ---- Eslatmalar (Cron) --------------------------------------------------

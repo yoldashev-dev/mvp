@@ -2,6 +2,7 @@ import React from 'react';
 import { useSettings } from '../lib/settingsContext.jsx';
 import { useToast } from '../lib/toast.jsx';
 import { hapticImpact } from '../lib/telegram.js';
+import { GlobeIcon, CoinsIcon, SunIcon, MoonIcon } from '../components/Icon.jsx';
 
 export default function Settings() {
     const showToast = useToast();
@@ -23,9 +24,23 @@ export default function Settings() {
         <div>
             {/* Язык / Til */}
             <div className='card'>
-                <p className='card-title'>
-                    {isUz ? 'Interfeys tili' : 'Язык интерфейса'}
-                </p>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginBottom: 6,
+                    }}
+                >
+                    <GlobeIcon
+                        width={16}
+                        height={16}
+                        style={{ color: 'var(--accent)' }}
+                    />
+                    <p className='card-title' style={{ margin: 0 }}>
+                        {isUz ? 'Interfeys tili' : 'Язык интерфейса'}
+                    </p>
+                </div>
                 <p className='muted' style={{ marginBottom: 12 }}>
                     {isUz
                         ? 'Ilova va bot xabarlarining tili'
@@ -57,9 +72,23 @@ export default function Settings() {
 
             {/* Валюта / Valyuta */}
             <div className='card'>
-                <p className='card-title'>
-                    {isUz ? 'Asosiy valyuta' : 'Основная валюта'}
-                </p>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginBottom: 6,
+                    }}
+                >
+                    <CoinsIcon
+                        width={16}
+                        height={16}
+                        style={{ color: 'var(--accent)' }}
+                    />
+                    <p className='card-title' style={{ margin: 0 }}>
+                        {isUz ? 'Asosiy valyuta' : 'Основная валюта'}
+                    </p>
+                </div>
                 <p className='muted' style={{ marginBottom: 12 }}>
                     {isUz
                         ? "Barcha hisob-kitoblar ko'rsatiladigan valyuta"
@@ -91,9 +120,23 @@ export default function Settings() {
 
             {/* Тема / Mavzu */}
             <div className='card'>
-                <p className='card-title'>
-                    {isUz ? 'Ilova mavzusi' : 'Тема оформления'}
-                </p>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginBottom: 6,
+                    }}
+                >
+                    <SunIcon
+                        width={16}
+                        height={16}
+                        style={{ color: 'var(--accent)' }}
+                    />
+                    <p className='card-title' style={{ margin: 0 }}>
+                        {isUz ? 'Ilova mavzusi' : 'Тема оформления'}
+                    </p>
+                </div>
                 <p className='muted' style={{ marginBottom: 12 }}>
                     {isUz
                         ? "Kunduzgi yoki tungi ko'rinish"
@@ -105,20 +148,36 @@ export default function Settings() {
                         className={
                             'tab-btn' + (theme === 'light' ? ' active' : '')
                         }
-                        style={{ flex: 1, padding: '10px 0' }}
+                        style={{
+                            flex: 1,
+                            padding: '10px 0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                        }}
                         onClick={() => update('theme', 'light')}
                     >
-                        ☀️ {isUz ? "Yorug'" : 'Светлая'}
+                        <SunIcon width={16} height={16} />
+                        {isUz ? "Yorug'" : 'Светлая'}
                     </button>
                     <button
                         type='button'
                         className={
                             'tab-btn' + (theme === 'dark' ? ' active' : '')
                         }
-                        style={{ flex: 1, padding: '10px 0' }}
+                        style={{
+                            flex: 1,
+                            padding: '10px 0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                        }}
                         onClick={() => update('theme', 'dark')}
                     >
-                        🌙 {isUz ? "Qorong'i" : 'Тёмная'}
+                        <MoonIcon width={16} height={16} />
+                        {isUz ? "Qorong'i" : 'Тёмная'}
                     </button>
                 </div>
             </div>
