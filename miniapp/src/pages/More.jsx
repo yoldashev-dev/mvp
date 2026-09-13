@@ -1,13 +1,22 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ClockIcon, ChartIcon, CalculatorIcon, CardIcon, ChevronRightIcon } from "../components/Icon.jsx";
+import {
+  SettingsIcon,
+  ClockIcon,
+  ChartIcon,
+  CalculatorIcon,
+  CardIcon,
+  ChevronRightIcon,
+} from "../components/Icon.jsx";
 
 const rows = [
+  { to: "/settings", Icon: SettingsIcon, label: "Настройки" },
   { to: "/reminders", Icon: ClockIcon, label: "Регулярные платежи" },
   { to: "/report", Icon: ChartIcon, label: "Отчёт за месяц" },
   { to: "/calculator", Icon: CalculatorIcon, label: "Калькулятор" },
   { to: "/subscription", Icon: CardIcon, label: "Подписка" },
 ];
+
 
 export default function More() {
   return (

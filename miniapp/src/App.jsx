@@ -12,6 +12,7 @@ import Subscription from "./pages/Subscription.jsx";
 import Calculator from "./pages/Calculator.jsx";
 import Debts from "./pages/Debts.jsx";
 import More from "./pages/More.jsx";
+import Settings from "./pages/Settings.jsx";
 
 export default function App() {
   const showToast = useToast();
@@ -27,6 +28,13 @@ export default function App() {
         telegram_id: tgUser.id,
         first_name: tgUser.first_name,
         username: tgUser.username,
+      })
+      .then((res) => {
+        if (res.data?.theme === "dark") {
+          document.body.classList.add("dark");
+        } else {
+          document.body.classList.remove("dark");
+        }
       })
       .catch((err) => showToast(errorMessage(err)));
   }, []);
@@ -45,9 +53,11 @@ export default function App() {
           <Route path="/calculator" element={<Calculator />} />
           <Route path="/subscription" element={<Subscription telegramId={user.id} />} />
           <Route path="/more" element={<More />} />
+          <Route path="/settings" element={<Settings telegramId={user.id} />} />
         </Routes>
       </main>
       <BottomNav />
     </div>
   );
 }
+

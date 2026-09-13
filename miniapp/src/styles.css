@@ -15,6 +15,37 @@
   --accent-alert: #DC2626; /* только для проблем: просрочка, ошибки, отрицательная прибыль */
 }
 
+body.dark {
+  --bg: #121212;
+  --surface: #1E1E1E;
+  --ink: #F3F4F6;
+  --hint: #9CA3AF;
+  --line: #2D2D2D;
+  --line-strong: #E5E7EB;
+  --accent: #4F7FFF;
+}
+
+body.dark .primary-btn {
+  background: #FFFFFF;
+  color: #111111;
+}
+
+body.dark .secondary-btn {
+  background: #2D2D2D;
+  color: #F3F4F6;
+}
+
+body.dark .bottom-nav {
+  background: rgba(30, 30, 30, 0.95);
+  border-top-color: #2D2D2D;
+}
+
+body.dark .action-btn.income,
+body.dark .action-btn.expense {
+  border-color: #2D2D2D;
+}
+
+
 * { box-sizing: border-box; }
 
 html, body, #root {

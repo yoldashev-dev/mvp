@@ -9,7 +9,7 @@ const items = [
   { to: "/more", Icon: MoreIcon, label: "Ещё" },
 ];
 
-const morePaths = ["/reminders", "/report", "/calculator", "/subscription", "/more"];
+const morePaths = ["/reminders", "/report", "/calculator", "/subscription", "/more", "/settings"];
 
 export default function BottomNav() {
   const location = useLocation();
