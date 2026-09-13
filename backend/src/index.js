@@ -41,6 +41,6 @@ app.use((err, req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`RentBot backend запущен на порту ${PORT}`);
 });
