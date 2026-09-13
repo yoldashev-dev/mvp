@@ -19,6 +19,7 @@ export function ToastProvider({ children }) {
       {children}
       {toast && (
         <div className={`toast toast-${toast.type}`} key={toast.id}>
+          {toast.type === "success" ? "✓  " : ""}
           {toast.message}
         </div>
       )}
