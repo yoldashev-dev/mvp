@@ -4,9 +4,22 @@ import cron from "node-cron";
 import "dotenv/config";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
-const MINIAPP_URL = process.env.MINIAPP_URL || "https://example.com";
+
+let rawBackendUrl = (process.env.BACKEND_URL || "http://localhost:3001").trim().replace(/\/+$/, "");
+if (rawBackendUrl && !rawBackendUrl.startsWith("http://") && !rawBackendUrl.startsWith("https://")) {
+  rawBackendUrl = `https://${rawBackendUrl}`;
+}
+const BACKEND_URL = rawBackendUrl;
+
+let rawMiniappUrl = (process.env.MINIAPP_URL || "https://example.com").trim();
+if (rawMiniappUrl && !rawMiniappUrl.startsWith("http://") && !rawMiniappUrl.startsWith("https://")) {
+  rawMiniappUrl = `https://${rawMiniappUrl}`;
+}
+const MINIAPP_URL = rawMiniappUrl;
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // нужен для голосового ввода (бесплатный тариф)
+
+
 
 if (!BOT_TOKEN) {
   console.error("BOT_TOKEN не задан. Возьмите токен у @BotFather и укажите в .env");
