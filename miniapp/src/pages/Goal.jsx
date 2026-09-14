@@ -7,7 +7,9 @@ import { CloseIcon, CheckIcon } from "../components/Icon.jsx";
 
 export default function Goal({ telegramId }) {
   const showToast = useToast();
-  const { currencySymbol } = useSettings();
+  const { currencySymbol, language } = useSettings();
+  const isUz = language === "uz";
+
   const [items, setItems] = useState(null); // null = загрузка
   const [form, setForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -26,7 +28,7 @@ export default function Goal({ telegramId }) {
   const createGoal = async () => {
     const value = parseInt(target.replace(/\D/g, ""), 10);
     if (!title.trim() || !value) {
-      showToast("Укажите название и сумму цели");
+      showToast(isUz ? "Maqsad nomi va summasini kiriting" : "Укажите название и сумму цели");
       return;
     }
     try {
@@ -45,6 +47,7 @@ export default function Goal({ telegramId }) {
     setBusyId(id);
     try {
       await api.post(`/api/goals/${id}/cancel`);
+      hapticImpact("medium");
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -58,7 +61,7 @@ export default function Goal({ telegramId }) {
     try {
       await api.post(`/api/goals/${id}/purchase`);
       hapticImpact("heavy");
-      showToast("Поздравляем с покупкой!", "success");
+      showToast(isUz ? "Xarid bilan tabriklaymiz!" : "Поздравляем с покупкой!", "success");
       load();
     } catch (err) {
       showToast(errorMessage(err));
@@ -73,10 +76,11 @@ export default function Goal({ telegramId }) {
     <div>
       {items.length === 0 && (
         <div className="card">
-          <p className="card-title">Пока нет целей</p>
+          <p className="card-title">{isUz ? "Hozircha maqsadlar yo'q" : "Пока нет целей"}</p>
           <p className="muted">
-            Добавь, на что копишь для бизнеса — например, холодильник побольше или новое оборудование.
-            Можно вести сразу несколько целей — рекомендованная сумма для накопления поделится между ними.
+            {isUz
+              ? "Biznesingiz uchun nima yig'moqchi ekanligingizni qo'shing — masalan, kattaroq muzlatgich yoki yangi uskuna. Bir vaqtning o'zida bir nechta maqsad qo'yish mumkin — tavsiya etilgan jamg'arma summasi ular o'rtasida taqsimlanadi."
+              : "Добавь, на что копишь для бизнеса — например, холодильник побольше или новое оборудование. Можно вести сразу несколько целей — рекомендованная сумма для накопления поделится между ними."}
           </p>
         </div>
       )}
@@ -91,7 +95,7 @@ export default function Goal({ telegramId }) {
                 className="icon-btn"
                 onClick={() => cancelGoal(goal.id)}
                 disabled={busyId === goal.id}
-                title="Отменить цель"
+                title={isUz ? "Maqsadni bekor qilish" : "Отменить цель"}
               >
                 <CloseIcon width={16} height={16} />
               </button>
@@ -103,14 +107,14 @@ export default function Goal({ telegramId }) {
             <div className="progress-track">
               <div className="progress-fill" style={{ width: `${pct}%` }} />
             </div>
-            <p className="muted">{pct}% накоплено</p>
+            <p className="muted">{isUz ? `${pct}% to'plandi` : `${pct}% накоплено`}</p>
 
             {projection.can_buy_now ? (
               <>
                 <p style={{ margin: "10px 0" }}>
                   <span className="pill pill-green" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                     <CheckIcon width={13} height={13} />
-                    Хватает денег!
+                    {isUz ? "Pul yetarli!" : "Хватает денег!"}
                   </span>
                 </p>
                 <button
@@ -118,25 +122,39 @@ export default function Goal({ telegramId }) {
                   onClick={() => purchaseGoal(goal.id)}
                   disabled={busyId === goal.id}
                 >
-                  Купить
+                  {isUz ? "Sotib olish" : "Купить"}
                 </button>
               </>
             ) : projection.daily_for_this_goal > 0 ? (
               <>
                 <p style={{ margin: "10px 0 4px" }}>
-                  Можешь откладывать примерно{" "}
-                  <strong>{fmt(projection.daily_for_this_goal)} {currencySymbol} в день</strong> без риска для бизнеса.
+                  {isUz ? (
+                    <>
+                      Biznes uchun xavfsiz tarzda kuniga taxminan{" "}
+                      <strong>{fmt(projection.daily_for_this_goal)} {currencySymbol}</strong> ajratishingiz mumkin.
+                    </>
+                  ) : (
+                    <>
+                      Можешь откладывать примерно{" "}
+                      <strong>{fmt(projection.daily_for_this_goal)} {currencySymbol} в день</strong> без риска для бизнеса.
+                    </>
+                  )}
                 </p>
                 <p className="muted">
-                  {projection.weeks_to_goal
-                    ? `Накопишь примерно за ${projection.weeks_to_goal} ${weekWord(projection.weeks_to_goal)}`
-                    : `Осталось накопить ${projection.days_to_goal} ${dayWord(projection.days_to_goal)}`}
+                  {isUz
+                    ? (projection.weeks_to_goal
+                        ? `Taxminan ${projection.weeks_to_goal} haftada to'playsiz`
+                        : `Yana ${projection.days_to_goal} kun to'plash qoldi`)
+                    : (projection.weeks_to_goal
+                        ? `Накопишь примерно за ${projection.weeks_to_goal} ${weekWord(projection.weeks_to_goal)}`
+                        : `Осталось накопить ${projection.days_to_goal} ${dayWord(projection.days_to_goal)}`)}
                 </p>
               </>
             ) : (
               <p className="muted" style={{ marginTop: 10 }}>
-                Пока свободных денег на накопление нет — сфокусируйся на том, чтобы прибыль покрывала
-                обязательные платежи.
+                {isUz
+                  ? "Hozircha jamg'arish uchun bo'sh pul yo'q — daromad majburiy to'lovlarni qoplashiga e'tibor qarating."
+                  : "Пока свободных денег на накопление нет — сфокусируйся на том, чтобы прибыль покрывала обязательные платежи."}
               </p>
             )}
           </div>
@@ -145,13 +163,15 @@ export default function Goal({ telegramId }) {
 
       {!form ? (
         <button className="primary-btn" onClick={() => setForm(true)}>
-          {items.length === 0 ? "Добавить цель" : "Добавить ещё одну цель"}
+          {items.length === 0
+            ? (isUz ? "Maqsad qo'shish" : "Добавить цель")
+            : (isUz ? "Yana maqsad qo'shish" : "Добавить ещё одну цель")}
         </button>
       ) : (
         <div className="card">
           <input
             className="field"
-            placeholder="Например, Холодильник побольше"
+            placeholder={isUz ? "Masalan, Kattaroq muzlatgich" : "Например, Холодильник побольше"}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoFocus
@@ -159,17 +179,17 @@ export default function Goal({ telegramId }) {
           <input
             className="field"
             inputMode="numeric"
-            placeholder={`Сколько стоит, ${currencySymbol}`}
+            placeholder={isUz ? `Narxi qancha, ${currencySymbol}` : `Сколько стоит, ${currencySymbol}`}
             value={target}
             onChange={(e) => setTarget(e.target.value)}
           />
 
           <div style={{ display: "flex", gap: 8 }}>
             <button className="secondary-btn" onClick={() => setForm(false)}>
-              Отмена
+              {isUz ? "Bekor qilish" : "Отмена"}
             </button>
             <button className="primary-btn" onClick={createGoal}>
-              Сохранить
+              {isUz ? "Saqlash" : "Сохранить"}
             </button>
           </div>
         </div>

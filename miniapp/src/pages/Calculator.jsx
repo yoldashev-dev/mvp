@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { hapticImpact } from "../lib/telegram.js";
+import { useSettings } from "../lib/settingsContext.jsx";
 
 const KEYS = [
   "C", "±", "%", "÷",
@@ -10,6 +11,8 @@ const KEYS = [
 ];
 
 export default function Calculator() {
+  const { language } = useSettings();
+  const isUz = language === "uz";
   const [display, setDisplay] = useState("0");
   const [prev, setPrev] = useState(null);
   const [op, setOp] = useState(null);
@@ -113,7 +116,9 @@ export default function Calculator() {
         ))}
       </div>
       <p className="muted" style={{ textAlign: "center", marginTop: 14 }}>
-        Обычный калькулятор — для быстрых расчётов на глаз, без сохранения в отчёты.
+        {isUz
+          ? "Oddiy kalkulyator — hisobotlarga saqlamasdan, tezkor hisob-kitoblar uchun."
+          : "Обычный калькулятор — для быстрых расчётов на глаз, без сохранения в отчёты."}
       </p>
     </div>
   );
