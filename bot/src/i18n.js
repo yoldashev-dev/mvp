@@ -60,6 +60,21 @@ export const MESSAGES = {
     lang_uz: "🇺🇿 O'zbekcha",
     curr_uzs: "Сум (UZS)",
     curr_rub: "Рубль (₽)",
+    subscription_expired_msg:
+      "🔒 <b>Срок действия бесплатного периода (или подписки) завершён.</b>\n\n" +
+      "Чтобы продолжить пользоваться ботом, перейдите к оплате подписки на 30 дней.",
+    btn_pay: "💳 Перейти к оплате",
+    admin_panel_btn: "👑 Админ-панель",
+    admin_stats_msg: (total, active, expired) =>
+      `👑 <b>Панель администратора</b>\n\n` +
+      `👥 Всего пользователей: <b>${total}</b>\n` +
+      `🟢 Активных: <b>${active}</b>\n` +
+      `🔴 С истёкшим сроком: <b>${expired}</b>`,
+    admin_grant_success: (id, days) =>
+      `✅ Пользователю <code>${id}</code> успешно открыт доступ на <b>${days} дней</b>!`,
+    admin_grant_usage: "Использование: /grant <telegram_id> [кол-во дней (по умолчанию 30)]",
+    user_granted_notify: (days) =>
+      `🎉 Ваша подписка успешно активирована на <b>${days} дней</b>! Приятного использования.`,
   },
   uz: {
     welcome: (name) =>
@@ -116,6 +131,21 @@ export const MESSAGES = {
     lang_uz: "🇺🇿 O'zbekcha",
     curr_uzs: "So'm (UZS)",
     curr_rub: "Rubl (₽)",
+    subscription_expired_msg:
+      "🔒 <b>Bepul sinov muddati (yoki obuna) yakunlandi.</b>\n\n" +
+      "Botdan foydalanishni davom ettirish uchun 30 kunlik obuna to'loviga o'ting.",
+    btn_pay: "💳 To'lovga o'tish",
+    admin_panel_btn: "👑 Admin-panel",
+    admin_stats_msg: (total, active, expired) =>
+      `👑 <b>Administrator paneli</b>\n\n` +
+      `👥 Jami foydalanuvchilar: <b>${total}</b>\n` +
+      `🟢 Faollar: <b>${active}</b>\n` +
+      `🔴 Muddati tugaganlar: <b>${expired}</b>`,
+    admin_grant_success: (id, days) =>
+      `✅ Foydalanuvchi <code>${id}</code> uchun kirish <b>${days} kunga</b> muvaffaqiyatli uzaytirildi!`,
+    admin_grant_usage: "Foydalanish: /grant <telegram_id> [kunlar soni (standart 30)]",
+    user_granted_notify: (days) =>
+      `🎉 Obunangiz <b>${days} kunga</b> muvaffaqiyatli faollashtirildi! Maroqli foydalaning.`,
   },
 };
 

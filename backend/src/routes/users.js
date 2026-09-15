@@ -1,10 +1,10 @@
 import { Router } from "express";
 import db from "../db/index.js";
 import { ah } from "../lib/asyncHandler.js";
+import { getUserAccessStatus, calculateUserStatus, DAY_MS } from "../lib/userAccess.js";
 
 const router = Router();
 
-const DAY_MS = 86400000;
 const TRIAL_DAYS = 7;
 
 // Создать пользователя при первом /start и включить триал
@@ -74,38 +74,12 @@ router.patch(
   })
 );
 
-
 router.get(
   "/:telegramId/status",
   ah((req, res) => {
-    const user = db
-      .prepare("SELECT * FROM users WHERE telegram_id = ?")
-      .get(req.params.telegramId);
-    if (!user) return res.status(404).json({ error: "not_found", message: "Пользователь не найден" });
-
-    const now = Date.now();
-    const trialEndsMs = user.trial_ends_at ? new Date(user.trial_ends_at).getTime() : 0;
-    const subscribedUntilMs = user.subscribed_until ? new Date(user.subscribed_until).getTime() : 0;
-
-    const trialActive = trialEndsMs > now;
-    const subscriptionActive = subscribedUntilMs > now;
-
-    // Считаем целые дни с округлением ВВЕРХ, чтобы "осталось меньше суток"
-    // всё ещё показывалось как "1 день", а не как "0 дней" — это и был баг,
-    // из-за которого триал казался короче на день.
-    const trialDaysLeft = trialActive ? Math.max(1, Math.ceil((trialEndsMs - now) / DAY_MS)) : 0;
-    const subscriptionDaysLeft = subscriptionActive
-      ? Math.max(1, Math.ceil((subscribedUntilMs - now) / DAY_MS))
-      : 0;
-
-    res.json({
-      ...user,
-      access: trialActive || subscriptionActive,
-      trial_active: trialActive,
-      subscription_active: subscriptionActive,
-      trial_days_left: trialDaysLeft,
-      subscription_days_left: subscriptionDaysLeft,
-    });
+    const status = getUserAccessStatus(req.params.telegramId);
+    if (!status) return res.status(404).json({ error: "not_found", message: "Пользователь не найден" });
+    res.json(status);
   })
 );
 
@@ -127,7 +101,8 @@ router.post(
       until,
       req.params.telegramId
     );
-    res.json({ subscribed_until: until });
+    const updated = db.prepare("SELECT * FROM users WHERE telegram_id = ?").get(req.params.telegramId);
+    res.json(calculateUserStatus(updated));
   })
 );
 

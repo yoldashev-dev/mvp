@@ -35,6 +35,10 @@ if (!BOT_TOKEN) {
 const bot = new Telegraf(BOT_TOKEN);
 const api = axios.create({ baseURL: BACKEND_URL, timeout: 15000 });
 
+// ID администратора (только этот аккаунт имеет доступ к админ-панели и неограниченный доступ)
+const ADMIN_ID = Number(process.env.ADMIN_TELEGRAM_ID || "6079747111");
+const ADMIN_PAYMENT_URL = `tg://user?id=${ADMIN_ID}`;
+
 // ---- Kesh: foydalanuvchi sozlamalari -------------------------------------
 const userCache = new Map();
 
@@ -74,6 +78,65 @@ async function updateUserSettings(telegramId, newSettings) {
   return updated;
 }
 
+// ---- Kesh: foydalanuvchi obuna holati (Access status cache) -------------
+const accessCache = new Map();
+
+async function checkUserAccess(telegramId) {
+  if (Number(telegramId) === ADMIN_ID) {
+    return { access: true, is_admin: true };
+  }
+
+  const now = Date.now();
+  const cached = accessCache.get(telegramId);
+  if (cached && now - cached.checkedAt < 15000) {
+    return cached.status;
+  }
+
+  try {
+    const { data } = await api.get(`/api/users/${telegramId}/status`);
+    accessCache.set(telegramId, { status: data, checkedAt: now });
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+// ---- Obuna muddati va bloklash tekshiruvi (Subscription access middleware) ----
+bot.use(async (ctx, next) => {
+  if (!ctx.from) return next();
+  const telegramId = ctx.from.id;
+
+  // Администратор всегда имеет неограниченный доступ
+  if (telegramId === ADMIN_ID) return next();
+
+  // Команда /start обрабатывается отдельно (регистрирует и проверяет)
+  if (ctx.message?.text?.startsWith("/start")) {
+    return next();
+  }
+
+  const status = await checkUserAccess(telegramId);
+  if (!status || status.access) {
+    return next();
+  }
+
+  // Если подписка/триал истекли — блокируем любые действия и показываем ТОЛЬКО одну кнопку оплаты
+  const settings = await getUserSettings(telegramId);
+  const lang = settings.language;
+
+  if (ctx.callbackQuery) {
+    try {
+      await ctx.answerCbQuery(lang === "uz" ? "Obuna muddati tugagan" : "Срок подписки истёк", {
+        show_alert: true,
+      });
+    } catch {}
+  }
+
+  return ctx.replyWithHTML(
+    t(lang, "subscription_expired_msg"),
+    Markup.inlineKeyboard([[Markup.button.url(t(lang, "btn_pay"), ADMIN_PAYMENT_URL)]])
+  );
+});
+
 // ---- Klaviaturalar (Keyboards) ------------------------------------------
 function getSettingsKeyboard(lang) {
   return Markup.inlineKeyboard([
@@ -104,12 +167,23 @@ bot.start(async (ctx) => {
 
   try {
     await api.post("/api/users/register", { telegram_id, first_name, username });
+    accessCache.delete(telegram_id);
   } catch (err) {
     console.error("Ro'yxatdan o'tishda xatolik:", err.message);
   }
 
   const settings = await getUserSettings(telegram_id);
   const lang = settings.language;
+  const status = await checkUserAccess(telegram_id);
+
+  // Если у пользователя закончился бесплатный период (7 дней) или подписка (30 дней):
+  // выводим ровно ОДНУ кнопку перехода к оплате в профиль администратора
+  if (telegram_id !== ADMIN_ID && status && !status.access) {
+    return ctx.replyWithHTML(
+      t(lang, "subscription_expired_msg"),
+      Markup.inlineKeyboard([[Markup.button.url(t(lang, "btn_pay"), ADMIN_PAYMENT_URL)]])
+    );
+  }
 
   await ctx.replyWithHTML(
     t(lang, "welcome", first_name),
@@ -330,6 +404,131 @@ bot.command("app", async (ctx) => {
   );
 });
 
+// ---- Admin Panel: faqat ADMIN_ID uchun (6079747111) ---------------------
+bot.command("admin", async (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+
+  try {
+    const { data: stats } = await api.get("/api/admin/stats", {
+      headers: { "x-admin-id": ADMIN_ID },
+    });
+
+    const msg = t("ru", "admin_stats_msg", stats.total_users, stats.active_users, stats.expired_users);
+    const cleanUrl = MINIAPP_URL.replace(/\/+$/, "");
+    const adminAppUrl = cleanUrl.includes("#")
+      ? cleanUrl.replace(/#.*$/, "#/admin")
+      : `${cleanUrl}/#/admin`;
+
+    await ctx.replyWithHTML(
+      msg,
+      Markup.inlineKeyboard([
+        [Markup.button.webApp("👑 Открыть Админ-панель", adminAppUrl)],
+        [Markup.button.callback("🔴 Истёкшие пользователи", "admin:expired_list")],
+      ])
+    );
+  } catch (err) {
+    ctx.reply(`Ошибка получения данных админки: ${err.message}`);
+  }
+});
+
+bot.action("admin:expired_list", async (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+  await ctx.answerCbQuery();
+
+  try {
+    const { data: users } = await api.get("/api/admin/users", {
+      params: { filter: "expired" },
+      headers: { "x-admin-id": ADMIN_ID },
+    });
+
+    if (!users || users.length === 0) {
+      return ctx.replyWithHTML("✅ Нет пользователей с истёкшим сроком! Все пользователи активны.");
+    }
+
+    const rows = users.slice(0, 8).map((u) => {
+      const name = u.first_name || u.username || u.telegram_id;
+      return [Markup.button.callback(`➕ 30 дн: ${name}`, `admin:grant:${u.telegram_id}:30`)];
+    });
+
+    await ctx.replyWithHTML(
+      `🔴 <b>Пользователи с истёкшим сроком (${users.length}):</b>\nНажмите кнопку под пользователем, чтобы продлить на 30 дней:`,
+      Markup.inlineKeyboard(rows)
+    );
+  } catch (err) {
+    ctx.reply(`Ошибка: ${err.message}`);
+  }
+});
+
+bot.action(/^admin:grant:(\d+):(\d+)$/, async (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+  await ctx.answerCbQuery();
+
+  const targetId = Number(ctx.match[1]);
+  const days = Number(ctx.match[2]) || 30;
+
+  try {
+    await api.post(
+      `/api/admin/users/${targetId}/grant`,
+      { days },
+      { headers: { "x-admin-id": ADMIN_ID } }
+    );
+    accessCache.delete(targetId);
+
+    await ctx.replyWithHTML(t("ru", "admin_grant_success", targetId, days));
+
+    // Уведомляем пользователя в Telegram
+    try {
+      const uSettings = await getUserSettings(targetId);
+      await bot.telegram.sendMessage(
+        targetId,
+        t(uSettings.language, "user_granted_notify", days),
+        { parse_mode: "HTML" }
+      );
+    } catch {}
+  } catch (err) {
+    ctx.reply(`Ошибка продления: ${err.message}`);
+  }
+});
+
+bot.command("grant", async (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.replyWithHTML(t("ru", "admin_grant_usage"));
+  }
+
+  const targetId = parts[1].replace(/\D/g, "");
+  const days = parts[2] ? parseInt(parts[2], 10) : 30;
+
+  if (!targetId) {
+    return ctx.replyWithHTML(t("ru", "admin_grant_usage"));
+  }
+
+  try {
+    await api.post(
+      `/api/admin/users/${targetId}/grant`,
+      { days },
+      { headers: { "x-admin-id": ADMIN_ID } }
+    );
+    accessCache.delete(Number(targetId));
+
+    await ctx.replyWithHTML(t("ru", "admin_grant_success", targetId, days));
+
+    // Уведомляем пользователя
+    try {
+      const uSettings = await getUserSettings(targetId);
+      await bot.telegram.sendMessage(
+        targetId,
+        t(uSettings.language, "user_granted_notify", days),
+        { parse_mode: "HTML" }
+      );
+    } catch {}
+  } catch (err) {
+    ctx.reply(`Ошибка продления: ${err.response?.data?.message || err.message}`);
+  }
+});
+
 // ---- Ovozli xabarlar (Voice) --------------------------------------------
 bot.on("voice", async (ctx) => {
   const settings = await getUserSettings(ctx.from.id);
@@ -486,6 +685,9 @@ cron.schedule("0 9 * * *", async () => {
   try {
     const { data: due } = await api.get("/api/reminders/due-today");
     for (const reminder of due) {
+      const accessStatus = await checkUserAccess(reminder.telegram_id);
+      if (!accessStatus?.access) continue;
+
       const settings = await getUserSettings(reminder.telegram_id);
       const amountText = reminder.amount
         ? ` (~${formatMoney(reminder.amount, settings.currency, settings.language)})`
@@ -506,6 +708,9 @@ cron.schedule("0 10 * * *", async () => {
   try {
     const { data: overdue } = await api.get("/api/debts/overdue");
     for (const debtor of overdue) {
+      const accessStatus = await checkUserAccess(debtor.telegram_id);
+      if (!accessStatus?.access) continue;
+
       const settings = await getUserSettings(debtor.telegram_id);
       const balanceStr = formatMoney(debtor.balance, settings.currency, settings.language);
       await bot.telegram.sendMessage(
@@ -524,6 +729,9 @@ cron.schedule("0 20 * * *", async () => {
   try {
     const { data: telegramIds } = await api.get("/api/transactions/no-entry-today");
     for (const telegramId of telegramIds) {
+      const accessStatus = await checkUserAccess(telegramId);
+      if (!accessStatus?.access) continue;
+
       const settings = await getUserSettings(telegramId);
       await bot.telegram.sendMessage(
         telegramId,
